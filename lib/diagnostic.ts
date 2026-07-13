@@ -1,4 +1,4 @@
-import { diagnosticGoals } from "@/lib/constants";
+import { businessContact, diagnosticGoals } from "@/lib/constants";
 
 export type DiagnosticFormState = {
   goal: string;
@@ -98,35 +98,73 @@ export function validateDiagnosticForm(
 
 export async function sendDiagnosticLead(data: DiagnosticFormState) {
   const webhookUrl = process.env.N8N_LEAD_WEBHOOK_URL;
+  const to = process.env.CONTACT_TO_EMAIL || businessContact.email;
+  const apiKey = process.env.RESEND_API_KEY;
+  const from =
+    process.env.CONTACT_FROM_EMAIL ||
+    "SolutiogeniZ <contacto@mail.solutiogeniz.com>";
 
-  if (!webhookUrl) {
-    console.warn("Diagnostic lead received without an n8n webhook configured.");
+  if (webhookUrl) {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        source: "solutiogeniz-diagnostic",
+        submittedAt: new Date().toISOString(),
+        lead: {
+          goal: data.goal,
+          currentProcess: data.currentProcess,
+          mainProblem: data.mainProblem,
+          tools: data.tools,
+          priority: data.priority,
+          name: data.name,
+          company: data.company,
+          email: data.email,
+          phone: data.phone,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("The n8n webhook rejected the diagnostic lead.");
+    }
+
+    return { delivered: true, channel: "n8n" as const };
+  }
+
+  if (!to || !apiKey) {
+    console.warn("Diagnostic lead received without a delivery channel configured.");
     return { delivered: false };
   }
 
-  const response = await fetch(webhookUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      source: "solutiogeniz-diagnostic",
-      submittedAt: new Date().toISOString(),
-      lead: {
-        goal: data.goal,
-        currentProcess: data.currentProcess,
-        mainProblem: data.mainProblem,
-        tools: data.tools,
-        priority: data.priority,
-        name: data.name,
-        company: data.company,
-        email: data.email,
-        phone: data.phone,
-      },
-    }),
+  const { Resend } = await import("resend");
+  const resend = new Resend(apiKey);
+
+  const { error } = await resend.emails.send({
+    from,
+    to,
+    replyTo: data.email,
+    subject: `Nueva solicitud de demo de ${data.company}`,
+    text: [
+      `Nombre: ${data.name}`,
+      `Empresa: ${data.company}`,
+      `Correo: ${data.email}`,
+      `Telefono: ${data.phone || "No informado"}`,
+      `Que quiere mejorar: ${data.goal}`,
+      `Prioridad: ${data.priority}`,
+      `Herramientas actuales: ${data.tools}`,
+      "",
+      "Proceso actual:",
+      data.currentProcess,
+      "",
+      "Problema principal:",
+      data.mainProblem,
+    ].join("\n"),
   });
 
-  if (!response.ok) {
-    throw new Error("The n8n webhook rejected the diagnostic lead.");
+  if (error) {
+    throw new Error("The email provider rejected the diagnostic lead.");
   }
 
-  return { delivered: true };
+  return { delivered: true, channel: "email" as const };
 }
