@@ -18,7 +18,7 @@ export const brand = {
 };
 
 export const businessContact = {
-  email: "uboldi.lucasmicael@gmail.com",
+  email: "lucas@solutiogeniz.com",
   phone: "1160418279",
 };
 

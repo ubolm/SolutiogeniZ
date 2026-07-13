@@ -4,6 +4,9 @@ import type { ContactFormState } from "@/lib/validations";
 export async function sendContactEmail(data: ContactFormState) {
   const to = process.env.CONTACT_TO_EMAIL || businessContact.email;
   const apiKey = process.env.RESEND_API_KEY;
+  const from =
+    process.env.CONTACT_FROM_EMAIL ||
+    "SolutiogeniZ <contacto@mail.solutiogeniz.com>";
 
   if (!to || !apiKey) {
     console.warn("Contact form received without an email provider configured.");
@@ -14,7 +17,7 @@ export async function sendContactEmail(data: ContactFormState) {
   const resend = new Resend(apiKey);
 
   const { error } = await resend.emails.send({
-    from: "SolutiogeniZ <onboarding@resend.dev>",
+    from,
     to,
     replyTo: data.email,
     subject: `Nueva consulta de ${data.company}`,
