@@ -8,6 +8,7 @@ import { Header } from "@/components/layout/Header";
 import { BenefitsSection } from "@/components/sections/BenefitsSection";
 import { BeforeAfterSection } from "@/components/sections/BeforeAfterSection";
 import { FaqAccordion } from "@/components/sections/FaqAccordion";
+import { FitSection } from "@/components/sections/FitSection";
 import { HeroAutomationFlow } from "@/components/sections/HeroAutomationFlow";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { Reveal } from "@/components/ui/Reveal";
@@ -116,12 +117,13 @@ export default function Home() {
             <div className="max-w-3xl">
               <span className="eyebrow">Servicios</span>
               <h2 className="font-heading mt-5 text-3xl font-semibold leading-tight text-ink md:text-5xl">
-                Lo que resolvemos y el impacto que genera.
+                Soluciones concretas para problemas que hoy ya te están costando.
               </h2>
               <p className="mt-5 text-lg leading-8 text-muted">
-                No se trata solo de ir más rápido. Se trata de recuperar
-                tiempo, ordenar la operación y cortar pérdidas que hoy parecen
-                pequeñas pero se acumulan todos los meses.
+                Cada servicio apunta a un problema operativo real: tiempo que se
+                pierde, seguimientos que se enfrían, consultas que se acumulan o
+                procesos que quedaron demasiado desordenados para seguir
+                creciendo así.
               </p>
             </div>
             <div className="mt-10 grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -210,23 +212,27 @@ export default function Home() {
 
         <BenefitsSection />
 
+        <FitSection />
+
         <section className="section bg-white" id="diagnostico">
           <div className="container grid gap-10 lg:grid-cols-[0.82fr_1.18fr]">
             <Reveal>
               <span className="eyebrow">Demo gratis</span>
               <h2 className="font-heading mt-5 text-3xl font-semibold leading-tight text-ink md:text-5xl">
-                Probá el valor antes de decidir.
+                Pedí una demo y descubrí dónde hoy se te está yendo tiempo o
+                plata.
               </h2>
               <p className="mt-5 text-lg leading-8 text-muted">
-                Contanos qué tarea o proceso hoy te hace perder tiempo, orden o
-                ventas. La demo gratis nos permite mostrarte dónde está la
-                mejora y si vale la pena avanzar ahora.
+                Contanos qué tarea, seguimiento o proceso hoy te está frenando.
+                En la demo te mostramos qué se puede ordenar, automatizar o
+                simplificar primero, y qué impacto real podría tener en tu
+                operación.
               </p>
               <div className="mt-7 grid gap-3 text-sm font-medium text-muted">
                 {[
-                  "Se completa en pocos minutos.",
-                  "Ayuda a detectar dónde hoy se está perdiendo tiempo o plata.",
-                  "Te permite ver el valor antes de contratar una implementación.",
+                  "Se completa en pocos minutos y nos da contexto para llegar mejor preparados.",
+                  "Te ayuda a detectar si hoy ya estás perdiendo tiempo, orden o ventas por seguir igual.",
+                  "Salís con una idea más clara de por dónde empezar y si vale la pena avanzar ahora.",
                 ].map((item) => (
                   <p className="flex items-start gap-3" key={item}>
                     <Check
@@ -238,6 +244,11 @@ export default function Home() {
                   </p>
                 ))}
               </div>
+              <p className="mt-6 max-w-xl rounded-2xl border border-line bg-paper px-4 py-4 text-sm leading-6 text-muted">
+                Si detectamos que todavía no conviene implementar nada, también
+                te lo vamos a decir. La demo sirve para ayudarte a decidir
+                mejor, no para empujarte a contratar algo que no necesitás.
+              </p>
             </Reveal>
             <Reveal
               className="rounded-[2rem] border border-line bg-paper p-5 shadow-soft md:p-8"
@@ -273,13 +284,24 @@ export default function Home() {
                 Contacto
               </span>
               <h2 className="font-heading mt-5 text-3xl font-semibold leading-tight md:text-5xl">
-                Hablemos de lo que hoy te está costando tiempo, orden o ventas.
+                Si hoy algo se está trabando, este es el momento de ordenarlo.
               </h2>
               <p className="mt-5 text-lg leading-8 text-white/72">
-                Contanos qué proceso querés mejorar. La primera conversación
-                sirve para ordenar prioridades, detectar el costo actual del
-                problema y ver si conviene avanzar con una solución concreta.
+                Contanos qué te está frenando y vemos por dónde conviene
+                empezar. La primera conversación nos sirve para detectar qué
+                está generando demora, desorden o pérdida de oportunidades, y
+                si hoy ya tiene sentido avanzar con una solución concreta.
               </p>
+              <div className="mt-8 grid gap-3 text-sm text-white/78">
+                <p className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+                  Te respondemos con una mirada concreta, sin vueltas ni
+                  promesas vacías.
+                </p>
+                <p className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+                  Si vemos que todavía no conviene implementar nada, también
+                  te lo vamos a decir.
+                </p>
+              </div>
             </Reveal>
             <Reveal
               className="rounded-[2rem] bg-white p-5 text-ink shadow-soft md:p-8"

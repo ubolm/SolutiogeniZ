@@ -243,7 +243,7 @@ export function ContactForm() {
         type="submit"
       >
         <Send aria-hidden="true" size={18} />
-        {status === "loading" ? "Enviando..." : "Enviar consulta"}
+        {status === "loading" ? "Enviando..." : "Quiero que me contacten"}
       </button>
 
       {status === "success" ? (
@@ -251,7 +251,7 @@ export function ContactForm() {
           className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
           role="status"
         >
-          Consulta enviada correctamente. Te responderemos a la brevedad.
+          Recibimos tu consulta. Te vamos a responder pronto para seguirla.
         </p>
       ) : null}
       {status === "error" && globalError ? (
