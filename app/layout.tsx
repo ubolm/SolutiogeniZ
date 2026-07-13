@@ -19,6 +19,9 @@ const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  verification: {
+    google: "A7Hiv6d9jYsFU4iwwSOzNQ24waysSc_V0btMvScEO54",
+  },
   title: "SolutiogeniZ | Automatización y desarrollo a medida para empresas",
   description:
     "Automatización, integración y desarrollo a medida para ordenar procesos y reducir tareas manuales.",
