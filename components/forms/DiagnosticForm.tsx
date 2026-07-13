@@ -341,6 +341,7 @@ export function DiagnosticForm() {
                 id="diagnostic-name"
                 name="name"
                 onChange={updateField}
+                placeholder="Tu nombre"
                 value={values.name}
               />
             </Field>
@@ -355,6 +356,7 @@ export function DiagnosticForm() {
                 id="diagnostic-company"
                 name="company"
                 onChange={updateField}
+                placeholder="Nombre de tu empresa"
                 value={values.company}
               />
             </Field>
@@ -371,6 +373,7 @@ export function DiagnosticForm() {
                 id="diagnostic-email"
                 name="email"
                 onChange={updateField}
+                placeholder="tuemail@empresa.com"
                 type="email"
                 value={values.email}
               />
@@ -382,6 +385,7 @@ export function DiagnosticForm() {
                 id="diagnostic-phone"
                 name="phone"
                 onChange={updateField}
+                placeholder="Opcional"
                 value={values.phone}
               />
             </Field>

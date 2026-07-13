@@ -129,6 +129,7 @@ export function ContactForm() {
             id="name"
             name="name"
             onChange={updateField}
+            placeholder="Tu nombre"
             value={values.name}
           />
         </Field>
@@ -141,6 +142,7 @@ export function ContactForm() {
             id="company"
             name="company"
             onChange={updateField}
+            placeholder="Nombre de tu empresa"
             value={values.company}
           />
         </Field>
@@ -156,6 +158,7 @@ export function ContactForm() {
             id="email"
             name="email"
             onChange={updateField}
+            placeholder="tuemail@empresa.com"
             type="email"
             value={values.email}
           />
@@ -169,6 +172,7 @@ export function ContactForm() {
             id="phone"
             name="phone"
             onChange={updateField}
+            placeholder="Opcional"
             value={values.phone}
           />
         </Field>
@@ -207,6 +211,7 @@ export function ContactForm() {
           id="message"
           name="message"
           onChange={updateField}
+          placeholder="Contanos qué querés mejorar y qué está pasando hoy."
           value={values.message}
         />
       </Field>

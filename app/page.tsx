@@ -82,12 +82,12 @@ export default function Home() {
               <span className="eyebrow">¿Te pasa esto hoy?</span>
 
               <h2 className="font-heading mt-5 text-3xl font-semibold leading-tight text-ink md:text-5xl">
-                Hay tareas que consumen tiempo sin aportar valor.
+                Hay tareas que te sacan tiempo y no hacen crecer el negocio.
               </h2>
 
               <p className="mt-4 text-lg leading-8 text-muted">
-                Cuando todo depende de personas, planillas y recordatorios, el
-                proceso se vuelve lento y difícil de controlar.
+                Cuando todo depende de mensajes, planillas y memoria, el
+                proceso se vuelve lento, frágil y difícil de seguir.
               </p>
             </Reveal>
 
@@ -116,12 +116,12 @@ export default function Home() {
             <div className="max-w-3xl">
               <span className="eyebrow">Servicios</span>
               <h2 className="font-heading mt-5 text-3xl font-semibold leading-tight text-ink md:text-5xl">
-                Lo que resolvemos y por qué importa.
+                Lo que resolvemos y el impacto que genera.
               </h2>
               <p className="mt-5 text-lg leading-8 text-muted">
-                No se trata solo de hacer algo más rápido. Se trata de recuperar
-                tiempo, ordenar la operación y evitar pérdidas invisibles que se
-                acumulan todos los meses.
+                No se trata solo de ir más rápido. Se trata de recuperar
+                tiempo, ordenar la operación y cortar pérdidas que hoy parecen
+                pequeñas pero se acumulan todos los meses.
               </p>
             </div>
             <div className="mt-10 grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -179,12 +179,11 @@ export default function Home() {
                 Cómo trabajamos
               </span>
               <h2 className="font-heading mt-5 text-3xl font-semibold leading-tight md:text-5xl">
-                Un proceso claro, sin sumar complejidad.
+                Un proceso claro para mejorar sin frenar la operación.
               </h2>
               <p className="mt-5 text-lg leading-8 text-white/70">
-                Empezamos por un problema que hoy tenga impacto real y avanzamos
-                con una solución viable, fácil de entender y preparada para el
-                uso cotidiano.
+                Empezamos por un problema con impacto real y avanzamos con una
+                solución concreta, fácil de entender y lista para el uso diario.
               </p>
             </div>
             <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -219,15 +218,15 @@ export default function Home() {
                 Probá el valor antes de decidir.
               </h2>
               <p className="mt-5 text-lg leading-8 text-muted">
-                Contanos qué tarea o proceso te está quitando tiempo. La demo
-                gratis nos permite mostrarte por dónde podría venir la mejora y
-                si tiene sentido avanzar en este momento.
+                Contanos qué tarea o proceso hoy te hace perder tiempo, orden o
+                ventas. La demo gratis nos permite mostrarte dónde está la
+                mejora y si vale la pena avanzar ahora.
               </p>
               <div className="mt-7 grid gap-3 text-sm font-medium text-muted">
                 {[
                   "Se completa en pocos minutos.",
                   "Ayuda a detectar dónde hoy se está perdiendo tiempo o plata.",
-                  "Te permite entender el valor antes de contratar una implementación.",
+                  "Te permite ver el valor antes de contratar una implementación.",
                 ].map((item) => (
                   <p className="flex items-start gap-3" key={item}>
                     <Check
@@ -274,13 +273,12 @@ export default function Home() {
                 Contacto
               </span>
               <h2 className="font-heading mt-5 text-3xl font-semibold leading-tight md:text-5xl">
-                Hablemos de lo que hoy te está costando tiempo y oportunidades.
+                Hablemos de lo que hoy te está costando tiempo, orden o ventas.
               </h2>
               <p className="mt-5 text-lg leading-8 text-white/72">
-                Contanos brevemente qué proceso querés mejorar. La primera
-                conversación sirve para ordenar prioridades, detectar el costo
-                actual del problema y mostrarte si vale la pena avanzar con una
-                solución concreta.
+                Contanos qué proceso querés mejorar. La primera conversación
+                sirve para ordenar prioridades, detectar el costo actual del
+                problema y ver si conviene avanzar con una solución concreta.
               </p>
             </Reveal>
             <Reveal

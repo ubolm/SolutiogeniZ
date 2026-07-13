@@ -12,14 +12,19 @@ export const brand = {
   name: "SolutiogeniZ",
   tagline: "Dejá de perder tiempo y oportunidades.",
   description:
-    "Automatizamos tareas y seguimientos para que tu empresa responda más rápido, reduzca errores y no deje oportunidades en el camino.",
+    "Ordenamos tareas, seguimientos y datos para que tu empresa responda más rápido y deje de perder oportunidades.",
   trustLine:
-    "Empezamos por un problema concreto y buscamos una mejora simple, útil y adaptada a tu operación.",
+    "Empezamos por un problema puntual y buscamos una mejora clara, útil y fácil de adoptar.",
 };
 
 export const businessContact = {
   email: "lucas@solutiogeniz.com",
   phone: "1160418279",
+};
+
+export const legalContact = {
+  responsibleName: "Lucas Uboldi",
+  legalAddress: "Casacuberta 3641, Castelar, Buenos Aires, Argentina",
 };
 
 export const navigation = [
@@ -36,44 +41,44 @@ export const services = [
     name: "Automatización de tareas",
     icon: Workflow,
     problem:
-      "Tareas repetitivas que consumen tiempo, generan errores y frenan el trabajo diario.",
+      "Tareas repetitivas que hacen perder tiempo todos los días.",
     benefit:
-      "Menos trabajo repetitivo, mayor velocidad y más tiempo para las tareas importantes.",
+      "Menos tareas manuales y más tiempo para vender, atender y decidir mejor.",
     description:
-      "Automatizamos avisos, registros, cargas de información y pasos operativos para que los procesos avancen sin depender de tareas manuales.",
+      "Automatizamos avisos, registros y pasos operativos para que el proceso avance sin depender de recordatorios ni carga manual.",
     cta: "Analizar este proceso",
   },
   {
     name: "Seguimiento comercial y operativo",
     icon: RefreshCcw,
     problem:
-      "Consultas, presupuestos, pagos o tareas que quedan olvidados por falta de seguimiento.",
+      "Consultas, presupuestos o tareas que se enfrían por falta de seguimiento.",
     benefit:
-      "Menos oportunidades perdidas y mayor visibilidad sobre clientes, ventas y pendientes.",
+      "Más respuestas a tiempo y menos oportunidades perdidas.",
     description:
-      "Organizamos recordatorios, alertas y actualizaciones automáticas para mantener cada oportunidad y tarea bajo control.",
+      "Organizamos alertas y actualizaciones automáticas para que cada oportunidad y cada pendiente sigan avanzando.",
     cta: "Mejorar mi seguimiento",
   },
   {
     name: "Chatbots y atención automática",
     icon: MessageSquareMore,
     problem:
-      "Consultas que llegan fuera de horario o equipos que responden constantemente las mismas preguntas.",
+      "Consultas que se acumulan o equipos que repiten las mismas respuestas.",
     benefit:
-      "Respuestas más rápidas, mejor atención y menos carga operativa para tu equipo.",
+      "Respuestas más rápidas sin cargar a tu equipo con lo repetitivo.",
     description:
-      "Creamos asistentes que responden consultas frecuentes, recopilan información y derivan cada conversación cuando hace falta atención humana.",
+      "Creamos asistentes que responden, toman datos y derivan cada caso cuando hace falta intervención humana.",
     cta: "Automatizar mi atención",
   },
   {
     name: "Herramientas internas a medida",
     icon: PanelsTopLeft,
     problem:
-      "Procesos que ya no funcionan bien con planillas, mensajes sueltos o sistemas demasiado complejos.",
+      "Procesos que ya no se sostienen con planillas, mensajes sueltos o herramientas incómodas.",
     benefit:
-      "Más orden, información centralizada y una herramienta diseñada para la operación real.",
+      "Más orden y una herramienta pensada para cómo trabajás de verdad.",
     description:
-      "Creamos paneles, formularios y aplicaciones simples adaptadas a la forma real en la que trabaja cada empresa.",
+      "Creamos paneles, formularios y herramientas internas adaptadas a la operación real de cada empresa.",
     cta: "Crear una herramienta",
   },
 ];
@@ -89,22 +94,22 @@ export const processSteps = [
   {
     title: "Diagnóstico",
     description:
-      "Entendemos el proceso actual, cómo circula la información y dónde hoy se están perdiendo tiempo, oportunidades o control.",
+      "Entendemos el proceso actual y detectamos dónde hoy se pierde tiempo, control o ventas.",
   },
   {
     title: "Diseño de la solución",
     description:
-      "Definimos una propuesta clara y viable según el beneficio esperado, el alcance y la forma real en que trabaja la empresa.",
+      "Definimos una solución clara y viable según el impacto esperado y la forma real en que trabaja la empresa.",
   },
   {
     title: "Implementación",
     description:
-      "Construimos y ajustamos la solución con foco en adopción rápida, claridad operativa y valor visible desde el uso cotidiano.",
+      "Implementamos y ajustamos la solución para que empiece a dar valor en el uso cotidiano.",
   },
   {
     title: "Medición y mejora",
     description:
-      "Revisamos resultados, detectamos ajustes y seguimos mejorando donde el proceso todavía tenga fricción.",
+      "Revisamos resultados y ajustamos donde todavía haya fricción o pérdida de tiempo.",
   },
 ];
 
