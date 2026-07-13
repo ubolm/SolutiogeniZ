@@ -7,5 +7,11 @@ export function getBookingHref() {
 }
 
 export function getSiteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  return (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.SITE_URL ||
+    (process.env.NODE_ENV === "production"
+      ? "https://solutiogeniz.com"
+      : "http://localhost:3000")
+  );
 }
