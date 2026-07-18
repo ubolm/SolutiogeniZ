@@ -46,6 +46,8 @@ export type CrmActivity = {
   type:
     | "lead_created"
     | "conversation_captured"
+    | "web_message_received"
+    | "web_message_sent"
     | "lead_updated"
     | "whatsapp_message_received"
     | "whatsapp_message_sent";
@@ -103,6 +105,15 @@ type PersistChatbotLeadInput = {
   transcript: ChatTranscriptMessage[];
   intent?: ChatbotIntent;
   detectedInterest?: ChatbotLeadInterest | "";
+  sessionId?: string;
+};
+
+type PersistWebChatMessageInput = {
+  sessionId: string;
+  message: string;
+  reply?: string;
+  detectedInterest?: ChatbotLeadInterest | "";
+  intent?: ChatbotIntent;
 };
 
 type CreateManualLeadInput = {
@@ -232,71 +243,243 @@ export async function persistChatbotLead({
   transcript,
   intent,
   detectedInterest,
+  sessionId,
 }: PersistChatbotLeadInput) {
   return updateStore((store) => {
     const now = new Date().toISOString();
-    const leadId = createId("lead");
+    const sessionPhone = sessionId ? `web:${sessionId}` : "";
+    const existingWebLead = sessionPhone
+      ? store.leads.find(
+          (item) => item.source === "web" && item.phone === sessionPhone,
+        )
+      : null;
+    const leadId = existingWebLead?.id ?? createId("lead");
     const conversationId = createId("conv");
     const nextActionAt = new Date(
       Date.now() + 24 * 60 * 60 * 1000,
     ).toISOString();
 
-    const crmLead: CrmLead = {
-      id: leadId,
-      createdAt: now,
-      updatedAt: now,
-      source: lead.source,
-      sourceDetail: "chatbot",
-      name: lead.name,
-      company: lead.company,
-      email: lead.email,
-      phone: lead.phone?.trim() || "",
-      interest: lead.interest || detectedInterest || "sin-definir",
-      summary: buildSummary(lead),
-      priority: "media",
-      status: "nuevo",
-      owner: "Sin asignar",
-      lastContactAt: now,
-      nextActionAt,
-      notes: "",
-    };
+    const crmLead: CrmLead = existingWebLead
+      ? {
+          ...existingWebLead,
+          updatedAt: now,
+          source: lead.source,
+          name: lead.name,
+          company: lead.company,
+          email: lead.email,
+          phone: lead.phone?.trim() || existingWebLead.phone,
+          interest: lead.interest || detectedInterest || "sin-definir",
+          summary: buildSummary(lead),
+          status: "nuevo",
+          lastContactAt: now,
+          nextActionAt,
+        }
+      : {
+          id: leadId,
+          createdAt: now,
+          updatedAt: now,
+          source: lead.source,
+          sourceDetail: "chatbot",
+          name: lead.name,
+          company: lead.company,
+          email: lead.email,
+          phone: lead.phone?.trim() || "",
+          interest: lead.interest || detectedInterest || "sin-definir",
+          summary: buildSummary(lead),
+          priority: "media",
+          status: "nuevo",
+          owner: "Sin asignar",
+          lastContactAt: now,
+          nextActionAt,
+          notes: "",
+        };
 
-    const crmConversation: CrmConversation = {
-      id: conversationId,
-      leadId,
-      channel: lead.source,
-      startedAt: now,
-      lastMessageAt: now,
-      transcriptSummary: buildTranscriptSummary(transcript),
-      handoffRequested: true,
-      detectedIntent: intent || "consulta_general",
-    };
+    const existingConversation = store.conversations.find(
+      (conversation) =>
+        conversation.leadId === leadId && conversation.channel === lead.source,
+    );
 
-    store.leads.unshift(crmLead);
-    store.conversations.unshift(crmConversation);
-    store.activities.unshift(
-      {
+    const crmConversation: CrmConversation = existingConversation
+      ? {
+          ...existingConversation,
+          lastMessageAt: now,
+          transcriptSummary: buildTranscriptSummary(transcript),
+          handoffRequested: true,
+          detectedIntent: intent || "consulta_general",
+        }
+      : {
+          id: conversationId,
+          leadId,
+          channel: lead.source,
+          startedAt: now,
+          lastMessageAt: now,
+          transcriptSummary: buildTranscriptSummary(transcript),
+          handoffRequested: true,
+          detectedIntent: intent || "consulta_general",
+        };
+
+    if (existingWebLead) {
+      const leadIndex = store.leads.findIndex((item) => item.id === leadId);
+
+      if (leadIndex >= 0) {
+        store.leads[leadIndex] = crmLead;
+      }
+    } else {
+      store.leads.unshift(crmLead);
+      store.activities.unshift({
         id: createId("act"),
         leadId,
         type: "lead_created",
         description: `Lead creado desde chatbot para ${lead.company}.`,
         createdAt: now,
         createdBy: "chatbot",
-      },
-      {
-        id: createId("act"),
-        leadId,
-        type: "conversation_captured",
-        description: "Conversacion inicial registrada desde el chatbot web.",
-        createdAt: now,
-        createdBy: "chatbot",
-      },
-    );
+      });
+    }
+
+    if (existingConversation) {
+      const conversationIndex = store.conversations.findIndex(
+        (conversation) => conversation.id === existingConversation.id,
+      );
+
+      if (conversationIndex >= 0) {
+        store.conversations[conversationIndex] = crmConversation;
+      }
+    } else {
+      store.conversations.unshift(crmConversation);
+    }
+
+    store.activities.unshift({
+      id: createId("act"),
+      leadId,
+      type: "conversation_captured",
+      description: "Conversacion inicial registrada desde el chatbot web.",
+      createdAt: now,
+      createdBy: "chatbot",
+    });
 
     return {
       lead: crmLead,
       conversation: crmConversation,
     };
+  });
+}
+
+export async function persistWebChatMessage({
+  sessionId,
+  message,
+  reply,
+  detectedInterest,
+  intent,
+}: PersistWebChatMessageInput) {
+  return updateStore((store) => {
+    const now = new Date().toISOString();
+    const sessionPhone = `web:${sessionId}`;
+    const nextActionAt = new Date(
+      Date.now() + 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    let lead = store.leads.find(
+      (item) => item.source === "web" && item.phone === sessionPhone,
+    );
+
+    if (!lead) {
+      lead = {
+        id: createId("lead"),
+        createdAt: now,
+        updatedAt: now,
+        source: "web",
+        sourceDetail: "chatbot",
+        name: "Visitante web",
+        company: "Lead web sin datos",
+        email: "",
+        phone: sessionPhone,
+        interest: detectedInterest || "sin-definir",
+        summary: `Web chat: ${message}`,
+        priority: "media",
+        status: "nuevo",
+        owner: "Sin asignar",
+        lastContactAt: now,
+        nextActionAt,
+        notes: "",
+      };
+
+      store.leads.unshift(lead);
+      store.activities.unshift({
+        id: createId("act"),
+        leadId: lead.id,
+        type: "lead_created",
+        description: "Lead web creado desde una nueva conversacion del chatbot.",
+        createdAt: now,
+        createdBy: "chatbot",
+      });
+    } else {
+      lead.updatedAt = now;
+      lead.lastContactAt = now;
+      lead.summary = `Web chat: ${message}`;
+
+      if (
+        (lead.interest === "sin-definir" || !lead.interest) &&
+        detectedInterest
+      ) {
+        lead.interest = detectedInterest;
+      }
+    }
+
+    const existingConversation = store.conversations.find(
+      (conversation) =>
+        conversation.leadId === lead.id && conversation.channel === "web",
+    );
+
+    if (!existingConversation) {
+      store.conversations.unshift({
+        id: createId("conv"),
+        leadId: lead.id,
+        channel: "web",
+        startedAt: now,
+        lastMessageAt: now,
+        transcriptSummary: [
+          `Cliente: ${message}`,
+          reply ? `Bot: ${reply}` : "",
+        ]
+          .filter(Boolean)
+          .join(" || "),
+        handoffRequested: false,
+        detectedIntent: intent || "consulta_general",
+      });
+    } else {
+      existingConversation.lastMessageAt = now;
+      existingConversation.detectedIntent =
+        intent || existingConversation.detectedIntent;
+      existingConversation.transcriptSummary = [
+        existingConversation.transcriptSummary,
+        `Cliente: ${message}`,
+        reply ? `Bot: ${reply}` : "",
+      ]
+        .filter(Boolean)
+        .join(" || ");
+    }
+
+    store.activities.unshift({
+      id: createId("act"),
+      leadId: lead.id,
+      type: "web_message_received",
+      description: "Mensaje recibido desde el chatbot web.",
+      createdAt: now,
+      createdBy: "chatbot",
+    });
+
+    if (reply) {
+      store.activities.unshift({
+        id: createId("act"),
+        leadId: lead.id,
+        type: "web_message_sent",
+        description: "Respuesta automatica enviada desde el chatbot web.",
+        createdAt: now,
+        createdBy: "chatbot",
+      });
+    }
+
+    return lead;
   });
 }
 

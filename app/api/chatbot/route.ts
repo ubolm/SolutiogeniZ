@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import type { ChatbotIntent, ChatbotLeadInterest } from "@/lib/chatbot";
 import { buildChatbotResponse } from "@/lib/chatbot-engine";
 import { sendChatbotLead, validateChatbotLead } from "@/lib/chatbot-lead";
-import { persistChatbotLead } from "@/lib/crm-store";
+import { persistChatbotLead, persistWebChatMessage } from "@/lib/crm-store";
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as
@@ -14,6 +14,7 @@ export async function POST(request: Request) {
         transcript?: Array<{ role?: string; content?: string }>;
         intent?: ChatbotIntent;
         interest?: ChatbotLeadInterest | "";
+        sessionId?: string;
       }
     | null;
 
@@ -58,6 +59,7 @@ export async function POST(request: Request) {
           : [],
         intent: body.intent,
         detectedInterest: body.interest,
+        sessionId: typeof body.sessionId === "string" ? body.sessionId : undefined,
       });
     } catch {
       console.error("The chatbot lead could not be delivered.");
@@ -86,6 +88,21 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json(buildChatbotResponse(message));
-}
+  const response = buildChatbotResponse(message);
 
+  if (typeof body.sessionId === "string" && body.sessionId.trim()) {
+    try {
+      await persistWebChatMessage({
+        sessionId: body.sessionId.trim(),
+        message,
+        reply: response.reply,
+        detectedInterest: response.interest,
+        intent: response.intent,
+      });
+    } catch (error) {
+      console.error("The chatbot web conversation could not be persisted.", error);
+    }
+  }
+
+  return NextResponse.json(response);
+}

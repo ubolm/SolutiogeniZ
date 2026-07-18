@@ -118,7 +118,11 @@ export function ChatbotWidget() {
       const response = await fetch("/api/chatbot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "message", message: trimmed }),
+        body: JSON.stringify({
+          action: "message",
+          message: trimmed,
+          sessionId: startedAt,
+        }),
       });
       const body = (await response.json().catch(() => null)) as
         | ({ error?: string } & Partial<ChatApiResponse>)
@@ -188,6 +192,7 @@ export function ChatbotWidget() {
           lead: leadForm,
           intent: lastIntent,
           interest: lastInterest,
+          sessionId: startedAt,
           transcript: messages.map((message) => ({
             role: message.role,
             content: message.content,
@@ -241,27 +246,27 @@ export function ChatbotWidget() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6">
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2 sm:bottom-5 sm:right-5">
       {isOpen ? (
-        <section className="w-[min(24rem,calc(100vw-1.5rem))] overflow-hidden rounded-[1.75rem] border border-white/70 bg-white shadow-[0_22px_80px_rgba(11,11,15,0.16)]">
-          <div className="bg-brand-gradient px-5 py-4 text-white">
+        <section className="w-[min(21rem,calc(100vw-1rem))] overflow-hidden rounded-[1.5rem] border border-white/70 bg-white shadow-[0_18px_60px_rgba(11,11,15,0.16)] sm:w-[21.5rem]">
+          <div className="bg-brand-gradient px-4 py-3.5 text-white">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
                   <Sparkles aria-hidden="true" size={14} />
                   Asistente comercial
                 </p>
-                <h2 className="mt-2 font-heading text-xl font-semibold">
+                <h2 className="mt-1.5 font-heading text-lg font-semibold">
                   SolutiogeniZ
                 </h2>
-                <p className="mt-1 text-sm leading-6 text-white/84">
-                  Te ayudo a entender que servicio te conviene y dejar tu
+                <p className="mt-1 text-xs leading-5 text-white/84">
+                  Respuestas claras, orientacion rapida y opcion de dejar tu
                   consulta.
                 </p>
               </div>
               <button
                 aria-label="Cerrar chat"
-                className="grid h-9 w-9 place-items-center rounded-full bg-white/14 text-white transition hover:bg-white/22"
+                className="grid h-8 w-8 place-items-center rounded-full bg-white/14 text-white transition hover:bg-white/22"
                 onClick={() => setIsOpen(false)}
                 type="button"
               >
@@ -270,14 +275,14 @@ export function ChatbotWidget() {
             </div>
           </div>
 
-          <div className="max-h-[28rem] space-y-4 overflow-y-auto bg-[#f7f8fc] px-4 py-4">
+          <div className="max-h-[24rem] space-y-3 overflow-y-auto bg-[#f7f8fc] px-3.5 py-3.5 sm:max-h-[25rem]">
             {messages.map((message) => (
               <div
                 className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}
                 key={message.id}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 ${
+                  className={`max-w-[88%] whitespace-pre-line rounded-2xl px-3.5 py-2.5 text-[13px] leading-6 ${
                     message.role === "assistant"
                       ? "bg-white text-ink shadow-[0_1px_0_rgba(11,11,15,0.03)]"
                       : "bg-[#4454f5] text-white"
@@ -292,7 +297,7 @@ export function ChatbotWidget() {
               <div className="flex flex-wrap gap-2">
                 {actions.map((action) => (
                   <button
-                    className="rounded-full border border-[#d9def7] bg-white px-3 py-2 text-xs font-semibold text-[#4454f5] transition hover:border-[#4454f5] hover:bg-[#eef1ff]"
+                    className="rounded-full border border-[#d9def7] bg-white px-3 py-1.5 text-[11px] font-semibold text-[#4454f5] transition hover:border-[#4454f5] hover:bg-[#eef1ff]"
                     key={`${action.type}-${action.label}`}
                     onClick={() => handleAction(action)}
                     type="button"
@@ -481,14 +486,14 @@ export function ChatbotWidget() {
           </div>
 
           <form
-            className="border-t border-[#eceff7] bg-white p-3"
+            className="border-t border-[#eceff7] bg-white p-2.5"
             onSubmit={(event) => {
               event.preventDefault();
               void sendMessage(input);
             }}
           >
-            <div className="flex items-center gap-2 rounded-full border border-[#dde2f0] bg-[#f7f8fc] px-3 py-2">
-              <Bot aria-hidden="true" className="text-[#4454f5]" size={18} />
+            <div className="flex items-center gap-2 rounded-full border border-[#dde2f0] bg-[#f7f8fc] px-3 py-1.5">
+              <Bot aria-hidden="true" className="text-[#4454f5]" size={16} />
               <input
                 className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-muted"
                 onChange={(event) => setInput(event.target.value)}
@@ -497,7 +502,7 @@ export function ChatbotWidget() {
               />
               <button
                 aria-label="Enviar mensaje"
-                className="grid h-9 w-9 place-items-center rounded-full bg-[#4454f5] text-white transition hover:bg-[#3643d4] disabled:opacity-70"
+                className="grid h-8 w-8 place-items-center rounded-full bg-[#4454f5] text-white transition hover:bg-[#3643d4] disabled:opacity-70"
                 disabled={loading || !input.trim()}
                 type="submit"
               >
@@ -509,7 +514,7 @@ export function ChatbotWidget() {
       ) : null}
 
       <button
-        className="inline-flex items-center gap-3 rounded-full bg-brand-gradient px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_48px_rgba(68,84,245,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(68,84,245,0.42)]"
+        className="inline-flex items-center gap-2.5 rounded-full bg-brand-gradient px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_40px_rgba(68,84,245,0.32)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_54px_rgba(68,84,245,0.38)]"
         onClick={() => {
           setIsOpen((current) => !current);
           trackConversionEvent("chatbot_opened");

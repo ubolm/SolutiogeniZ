@@ -53,7 +53,7 @@ export const chatbotProfile = {
   name: "Asistente de SolutiogeniZ",
   tone: "calido, optimista, claro y profesional",
   welcomeMessage:
-    "Hola, soy el asistente de SolutiogeniZ. Puedo ayudarte a conocer nuestros servicios, entender que proceso queres mejorar y dejar tu consulta para que te contactemos.",
+    "Hola, soy el asistente de SolutiogeniZ.\n\nPuedo ayudarte con:\n- Automatizaciones de tareas\n- Seguimiento comercial y operativo\n- Chatbots para WhatsApp y web\n- Integraciones y herramientas internas\n\nContame que proceso queres mejorar y te oriento por donde conviene empezar.",
   handoffMessage:
     "Perfecto. Si queres, puedo dejar tus datos para que el equipo de SolutiogeniZ te contacte.",
 };

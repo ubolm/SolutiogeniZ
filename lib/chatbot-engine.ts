@@ -133,10 +133,7 @@ export function buildChatbotResponse(message: string) {
   let captureLead = false;
 
   if (intent === "consultar_servicios") {
-    reply = `Podemos ayudarte con ${chatbotServices
-      .slice(0, 4)
-      .map((service) => service.title.toLowerCase())
-      .join(", ")}. Si queres, contame que proceso te gustaria mejorar y te oriento por donde conviene empezar.`;
+    reply = `Te acompano con estas soluciones:\n- Automatizacion de tareas repetitivas\n- Seguimiento comercial y operativo\n- Chatbots para WhatsApp y web\n- Integraciones y herramientas internas\n\nSi queres, contame que proceso te gustaria mejorar y te digo por donde conviene empezar.`;
     actions = [
       {
         type: "message",
@@ -168,14 +165,14 @@ export function buildChatbotResponse(message: string) {
     actions = [{ type: "lead", label: "Completar datos" }];
     captureLead = true;
   } else if (service) {
-    reply = `${service.title}: ${service.summary} ${service.benefit} Si queres, puedo dejar tu consulta para que el equipo vea tu caso puntual.`;
+    reply = `${service.title}\n- ${service.summary}\n- ${service.benefit}\n\nSi queres, puedo dejar tu consulta para que el equipo vea tu caso puntual.`;
     actions = [
       { type: "lead", label: "Quiero dejar mi consulta" },
       { type: "link", label: "Ver auditoria", href: "#auditoria" },
     ];
     captureLead = true;
   } else {
-    reply = `Te puedo ayudar a entender si conviene empezar por automatizacion, seguimiento, chatbot, integraciones o una herramienta interna. ${chatbotKnowledgeBase.company.promise}`;
+    reply = `Te puedo ayudar a ordenar tu consulta y definir por donde empezar.\n\nPuntos en los que solemos trabajar:\n- Automatizacion\n- Seguimiento comercial\n- Chatbots\n- Integraciones\n- Herramientas internas\n\n${chatbotKnowledgeBase.company.promise}`;
     actions = [
       {
         type: "message",
@@ -193,4 +190,3 @@ export function buildChatbotResponse(message: string) {
 
   return { reply, actions, captureLead, intent, interest };
 }
-
