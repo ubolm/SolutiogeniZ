@@ -39,7 +39,7 @@ export function BeforeAfterSection() {
               <h3 className="font-heading mt-2 text-2xl font-semibold text-ink">
                 Procesos manuales y difíciles de controlar
               </h3>
-              <ul className="mt-6 space-y-3">
+              <ul className="mt-6 flex-1 space-y-3 pb-6">
                 {beforeItems.map((item) => (
                   <li
                     className="flex items-center gap-3 text-base font-medium text-ink"
@@ -52,7 +52,7 @@ export function BeforeAfterSection() {
                   </li>
                 ))}
               </ul>
-              <p className="mt-auto border-t border-red-200 pt-6 text-lg font-semibold text-red-700">
+              <p className="border-t border-red-200 pt-6 text-lg font-semibold text-red-700">
                 Más tiempo perdido. Más errores. Menos control.
               </p>
             </article>
@@ -66,7 +66,7 @@ export function BeforeAfterSection() {
               <h3 className="font-heading mt-2 text-2xl font-semibold text-ink">
                 Procesos ordenados y con continuidad
               </h3>
-              <ul className="mt-6 space-y-3">
+              <ul className="mt-6 flex-1 space-y-3 pb-6">
                 {afterItems.map((item) => (
                   <li
                     className="flex items-center gap-3 text-base font-medium text-ink"
@@ -79,7 +79,7 @@ export function BeforeAfterSection() {
                   </li>
                 ))}
               </ul>
-              <p className="mt-auto border-t border-primary/20 pt-6 text-lg font-semibold text-primary-strong">
+              <p className="border-t border-primary/20 pt-6 text-lg font-semibold text-primary-strong">
                 Más orden. Respuestas más rápidas. Más oportunidades.
               </p>
             </article>
@@ -91,14 +91,15 @@ export function BeforeAfterSection() {
           delay={0.1}
         >
           <p className="font-heading text-2xl font-semibold text-ink">
-            ¿Esto se parece a lo que pasa hoy en tu empresa?
+            Si esto te esta pasando hoy, empecemos por revisarlo.
           </p>
           <p className="mt-3 text-base leading-7 text-muted">
-            Podemos analizar el proceso y mostrarte una forma simple de
-            mejorarlo.
+            La auditoria gratis nos permite detectar donde hoy se esta yendo
+            tiempo, orden o ventas. Si vemos una mejora concreta, avanzamos
+            despues con la demo.
           </p>
           <div className="mt-6 flex justify-center">
-            <ButtonLink href="#diagnostico">Solicitar demo gratis</ButtonLink>
+            <ButtonLink href="#auditoria">Solicitar auditoria gratis</ButtonLink>
           </div>
         </Reveal>
       </div>

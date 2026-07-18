@@ -10,16 +10,16 @@ import {
 
 export const brand = {
   name: "SolutiogeniZ",
-  tagline: "Dejá de perder tiempo y oportunidades.",
+  tagline: "Cada demora te cuesta ventas.",
   description:
-    "Ordenamos tareas, seguimientos y datos para que tu empresa responda más rápido y deje de perder oportunidades.",
+    "Ordenamos consultas, seguimientos y tareas para que tu empresa responda más rápido y no pierda oportunidades.",
   trustLine:
-    "Empezamos por un problema puntual y buscamos una mejora clara, útil y fácil de adoptar.",
+    "Empezamos por el punto donde hoy más se está frenando tu operación.",
 };
 
 export const businessContact = {
   email: "lucas@solutiogeniz.com",
-  phone: "1160418279",
+  phone: "+54 1178225683",
 };
 
 export const legalContact = {
@@ -41,45 +41,45 @@ export const services = [
     name: "Automatización de tareas",
     icon: Workflow,
     problem:
-      "Tareas repetitivas que hacen perder tiempo todos los días.",
+      "Hay tareas diarias que consumen tiempo y no empujan el negocio.",
     benefit:
-      "Menos tareas manuales y más tiempo para vender, atender y decidir mejor.",
+      "Menos carga manual. Más foco en lo que sí mueve ventas.",
     description:
-      "Automatizamos avisos, registros y pasos operativos para que el proceso avance sin depender de recordatorios ni carga manual.",
-    cta: "Analizar este proceso",
+      "Avisos, registros y pasos internos quedan ordenados para que el proceso siga avanzando sin fricción.",
+    cta: "Ver si aplica",
   },
   {
     name: "Seguimiento comercial y operativo",
     icon: RefreshCcw,
     problem:
-      "Consultas, presupuestos o tareas que se enfrían por falta de seguimiento.",
+      "Consultas, presupuestos o pendientes se enfrían por falta de seguimiento.",
     benefit:
-      "Más respuestas a tiempo y menos oportunidades perdidas.",
+      "Más continuidad. Menos oportunidades que se enfrían.",
     description:
-      "Organizamos alertas y actualizaciones automáticas para que cada oportunidad y cada pendiente sigan avanzando.",
-    cta: "Mejorar mi seguimiento",
+      "Alertas, recordatorios y movimientos automáticos para que cada contacto o tarea no quede a mitad de camino.",
+    cta: "Quiero más control",
   },
   {
     name: "Chatbots y atención automática",
     icon: MessageSquareMore,
     problem:
-      "Consultas que se acumulan o equipos que repiten las mismas respuestas.",
+      "Se acumulan consultas y el equipo repite respuestas todo el tiempo.",
     benefit:
-      "Respuestas más rápidas sin cargar a tu equipo con lo repetitivo.",
+      "Respuestas más rápidas sin sumar desgaste al equipo.",
     description:
-      "Creamos asistentes que responden, toman datos y derivan cada caso cuando hace falta intervención humana.",
-    cta: "Automatizar mi atención",
+      "Asistentes que responden, toman datos y derivan cada caso cuando hace falta intervención humana.",
+    cta: "Quiero responder mejor",
   },
   {
     name: "Herramientas internas a medida",
     icon: PanelsTopLeft,
     problem:
-      "Procesos que ya no se sostienen con planillas, mensajes sueltos o herramientas incómodas.",
+      "Tus procesos ya no se sostienen con planillas, mensajes sueltos o herramientas incómodas.",
     benefit:
-      "Más orden y una herramienta pensada para cómo trabajás de verdad.",
+      "Más orden y visibilidad en una herramienta pensada para tu forma de trabajar.",
     description:
-      "Creamos paneles, formularios y herramientas internas adaptadas a la operación real de cada empresa.",
-    cta: "Crear una herramienta",
+      "Paneles, formularios y herramientas internas adaptadas al funcionamiento real de la empresa.",
+    cta: "Quiero ordenar esto",
   },
 ];
 
@@ -133,6 +133,33 @@ export const benefits = [
     title: "Ganás control",
     description: "Sabés qué ocurrió, qué está pendiente y qué sigue.",
     icon: PanelsTopLeft,
+  },
+];
+
+export const fitSignals = [
+  {
+    title: "Te conviene si hoy...",
+    items: [
+      "Hay tareas importantes que siguen dependiendo de mensajes o memoria.",
+      "Se enfrían consultas, presupuestos o pendientes por falta de seguimiento.",
+      "Tu equipo pierde tiempo repitiendo pasos que podrían resolverse solos.",
+    ],
+  },
+  {
+    title: "El cambio que buscás es...",
+    items: [
+      "Ordenar un proceso puntual antes de que siga creciendo el desorden.",
+      "Responder más rápido sin sumar carga manual al equipo.",
+      "Tener más visibilidad sobre qué pasó, qué falta y qué sigue.",
+    ],
+  },
+  {
+    title: "No necesitás...",
+    items: [
+      "Rehacer toda la operación para empezar a mejorar.",
+      "Un proyecto enorme para ver un resultado concreto.",
+      "Tener todo definido de antemano para pedir una demo o una primera revisión.",
+    ],
   },
 ];
 

@@ -161,12 +161,12 @@ export function DiagnosticForm() {
       setErrors(body?.errors ?? {});
       setGlobalError(
         body?.error ??
-          "No pudimos enviar el diagnóstico. Revisá los datos e intentá nuevamente.",
+          "No pudimos enviar la solicitud. Revisa los datos e intenta nuevamente.",
       );
       setStatus("error");
     } catch {
       setGlobalError(
-        "No pudimos conectarnos para enviar el diagnóstico. Revisá tu conexión e intentá nuevamente.",
+        "No pudimos conectarnos para enviar la solicitud. Revisa tu conexion e intenta nuevamente.",
       );
       setStatus("error");
     }
@@ -182,11 +182,12 @@ export function DiagnosticForm() {
           <Check aria-hidden="true" size={22} />
         </div>
         <h3 className="font-heading mt-5 text-2xl font-semibold">
-          Gracias por solicitar tu demo gratis.
+          Gracias por solicitar tu auditoria gratis.
         </h3>
         <p className="mt-3 leading-7">
-          Revisaremos la información y nos pondremos en contacto para mostrarte
-          por dónde podrías empezar a recuperar tiempo, orden y oportunidades.
+          Vamos a revisar la informacion y te vamos a contactar con una primera
+          lectura del proceso. Si vemos una mejora concreta, avanzamos tambien
+          con la demo gratuita.
         </p>
       </div>
     );
@@ -404,7 +405,7 @@ export function DiagnosticForm() {
             />
             <span>
               Acepto que SolutiogeniZ use estos datos para responder mi
-              solicitud de demo y contacto inicial.
+              solicitud de auditoria y contacto inicial.
             </span>
           </label>
           <ErrorMessage error={errors.privacy} id="diagnostic-privacy-error" />
@@ -438,7 +439,7 @@ export function DiagnosticForm() {
             type="submit"
           >
             <Send aria-hidden="true" size={17} />
-            {status === "loading" ? "Enviando..." : "Solicitar demo gratis"}
+            {status === "loading" ? "Enviando..." : "Solicitar auditoria gratis"}
           </button>
         )}
       </div>

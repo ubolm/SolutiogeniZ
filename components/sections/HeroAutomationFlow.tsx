@@ -11,51 +11,47 @@ import { motion, useReducedMotion } from "framer-motion";
 
 const flowSteps = [
   {
-    title: "Consulta recibida",
-    status: "Entrada detectada",
+    title: "Consulta detectada",
+    status: "El pedido entra sin demora",
     icon: MessageSquareText,
   },
   {
-    title: "Registro automático",
-    status: "Información guardada",
+    title: "Registro ordenado",
+    status: "Los datos quedan listos para trabajar",
     icon: ClipboardPlus,
   },
   {
-    title: "Respuesta enviada",
-    status: "Cliente informado",
+    title: "Respuesta en marcha",
+    status: "El contacto recibe una primera acción",
     icon: Send,
   },
   {
     title: "Seguimiento activo",
-    status: "Recordatorio programado",
+    status: "Nada importante queda colgado",
     icon: BellRing,
   },
 ];
 
-const flowResults = [
-  "Información ordenada",
-  "Respuesta rápida",
-  "Seguimiento constante",
-];
+const flowResults = ["Menos demora", "Más orden", "Más continuidad"];
 
 export function HeroAutomationFlow() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <div className="relative rounded-[2rem] border border-white bg-white p-4 shadow-soft">
+    <div className="relative mx-auto w-full max-w-[45rem] rounded-[2rem] border border-white bg-white p-4 shadow-soft lg:max-w-[42rem] xl:max-w-[45rem]">
       <div className="rounded-[1.5rem] bg-night p-5 text-white sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-aqua">
               Automatización en acción
             </p>
-            <p className="font-heading mt-1 text-lg font-semibold">
-              De la consulta al seguimiento
+            <p className="font-heading mt-1 max-w-[16ch] text-lg font-semibold leading-tight sm:text-[1.55rem]">
+              Consulta, respuesta y seguimiento
             </p>
           </div>
-          <span className="rounded-full border border-aqua/25 bg-aqua/10 px-3 py-1 text-xs font-semibold text-aqua">
-            Activo
-          </span>
+            <span className="rounded-full border border-aqua/25 bg-aqua/10 px-3 py-1 text-xs font-semibold text-aqua">
+              Activo
+            </span>
         </div>
 
         <div className="grid gap-3">
@@ -78,7 +74,7 @@ export function HeroAutomationFlow() {
                           opacity: [0.8, 1, 0.88],
                         }
                   }
-                  className="flex items-center gap-3 rounded-[1.15rem] border border-white/10 bg-white/[0.06] p-3.5"
+                  className="flex items-center gap-3 rounded-[1.15rem] border border-white/10 bg-white/[0.06] p-3.5 sm:p-4"
                   transition={{
                     delay: index * 0.08,
                     duration: 0.45,
@@ -92,10 +88,10 @@ export function HeroAutomationFlow() {
                     <Icon aria-hidden="true" size={17} />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-white">
+                    <p className="text-sm font-semibold text-white sm:text-[1.05rem]">
                       {step.title}
                     </p>
-                    <p className="mt-0.5 text-xs text-white/62">
+                    <p className="mt-0.5 text-xs leading-5 text-white/62 sm:text-[0.92rem]">
                       {step.status}
                     </p>
                   </div>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Sora } from "next/font/google";
 
 import "@/app/globals.css";
+import { ChatbotWidget } from "@/components/chatbot/ChatbotWidget";
 import { brand } from "@/lib/constants";
 import { getSiteUrl } from "@/lib/utils";
 
@@ -60,7 +61,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html className={`${inter.variable} ${sora.variable}`} lang="es">
-      <body>{children}</body>
+      <body>
+        {children}
+        <ChatbotWidget />
+      </body>
     </html>
   );
 }

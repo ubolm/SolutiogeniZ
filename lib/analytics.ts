@@ -6,7 +6,9 @@ export type ConversionEventName =
   | "diagnostic_step_viewed"
   | "diagnostic_completed"
   | "service_selected"
-  | "booking_click";
+  | "booking_click"
+  | "chatbot_opened"
+  | "chatbot_lead_submitted";
 
 export function trackConversionEvent(
   name: ConversionEventName,

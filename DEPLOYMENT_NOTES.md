@@ -211,6 +211,44 @@ curl -Iv https://www.solutiogeniz.com
 - Sumar `n8n` como tercer proyecto en Easypanel
 - Documentar acceso y backups del panel
 
+## Evolution API para SolutiogeniZ
+
+Datos confirmados el sabado 18 de julio de 2026:
+
+- Evolution manager: `https://evolution.solutiogeniz.com/manage`
+- Evolution base URL para la app: `https://evolution.solutiogeniz.com`
+- Instancia conectada: `solutiogeniz - ChatBot`
+- Numero vinculado: `5491178225683`
+
+Variables que conviene cargar en Easypanel para el proyecto `solutiogeniz`:
+
+```env
+EVOLUTION_API_BASE_URL=https://evolution.solutiogeniz.com
+EVOLUTION_API_INSTANCE_NAME=solutiogeniz - ChatBot
+EVOLUTION_API_KEY=[tu api key]
+NEXT_PUBLIC_SITE_URL=https://solutiogeniz.com
+```
+
+Webhook publico esperado:
+
+```text
+https://solutiogeniz.com/api/whatsapp/webhook
+```
+
+Configuracion sugerida en Evolution:
+
+- habilitado: `true`
+- `webhook_by_events = false`
+- eventos: `MESSAGES_UPSERT`
+
+Prueba funcional esperada:
+
+1. enviar un mensaje real al WhatsApp conectado en Evolution;
+2. verificar que el webhook llegue a `https://solutiogeniz.com/api/whatsapp/webhook`;
+3. confirmar que se crea o actualiza el lead en `/crm/leads`;
+4. confirmar que aparece actividad en `/crm/conversaciones`;
+5. verificar que la respuesta automatica vuelve al WhatsApp del contacto.
+
 ## Recomendacion de cierre
 
 Guardar en un lugar seguro:
@@ -220,4 +258,3 @@ Guardar en un lugar seguro:
 - nombres de repositorios GitHub
 - IP publica de la VPS
 - dominio principal de cada proyecto
-

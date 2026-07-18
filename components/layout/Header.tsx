@@ -41,15 +41,17 @@ export function Header() {
       >
         Saltar al contenido
       </a>
-      <div className="container flex h-20 items-center justify-between gap-4">
-        <Wordmark />
+      <div className="container grid h-20 grid-cols-[auto_1fr_auto] items-center gap-4 lg:gap-6">
+        <div className="justify-self-start">
+          <Wordmark />
+        </div>
         <nav
           aria-label="Navegación principal"
-          className="hidden items-center gap-1 lg:flex"
+          className="hidden items-center justify-center gap-1 justify-self-center lg:flex"
         >
           {navigation.map((item) => (
             <a
-              className="rounded-full px-3 py-2 text-sm font-medium text-muted transition hover:bg-white hover:text-ink focus:outline-none focus-visible:shadow-focus"
+              className="rounded-full px-4 py-2 text-sm font-medium text-muted transition hover:bg-white hover:text-ink focus:outline-none focus-visible:shadow-focus"
               href={resolveHref(item.href)}
               key={item.href}
             >
@@ -57,19 +59,19 @@ export function Header() {
             </a>
           ))}
         </nav>
-        <div className="hidden lg:block">
+        <div className="hidden justify-self-end lg:block">
           <ButtonLink
-            href={resolveHref("#diagnostico")}
+            href={resolveHref("#auditoria")}
             onClick={() => trackConversionEvent("booking_click")}
           >
-            Solicitar demo gratis
+            Solicitar auditoria gratis
           </ButtonLink>
         </div>
         <button
           aria-controls="mobile-menu"
           aria-expanded={open}
           aria-label={open ? "Cerrar menú" : "Abrir menú"}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-line bg-white text-ink transition hover:border-primary/40 focus:outline-none focus-visible:shadow-focus lg:hidden"
+          className="inline-flex h-11 w-11 items-center justify-center justify-self-end rounded-full border border-line bg-white text-ink transition hover:border-primary/40 focus:outline-none focus-visible:shadow-focus lg:hidden"
           onClick={() => setOpen((value) => !value)}
           type="button"
         >
@@ -98,13 +100,13 @@ export function Header() {
             ))}
             <ButtonLink
               className="mt-2 w-full"
-              href={resolveHref("#diagnostico")}
+              href={resolveHref("#auditoria")}
               onClick={() => {
                 trackConversionEvent("booking_click");
                 setOpen(false);
               }}
             >
-              Solicitar demo gratis
+              Solicitar auditoria gratis
             </ButtonLink>
           </nav>
         </div>
