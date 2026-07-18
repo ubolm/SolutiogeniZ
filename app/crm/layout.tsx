@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 
@@ -7,7 +8,12 @@ import { CrmLogoutButton } from "@/components/crm/CrmLogoutButton";
 import { CrmSidebarNav } from "@/components/crm/CrmSidebarNav";
 
 export default function CrmLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+
+  if (pathname === "/crm/login") {
+    return <>{children}</>;
+  }
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#1d2452_0%,#0b0d16_38%,#090b12_100%)] p-3 sm:p-4 lg:p-5">
