@@ -1,6 +1,7 @@
 "use client";
 
 import { Bot, MessageCircle, Send, Sparkles, X } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 
 import { trackConversionEvent } from "@/lib/analytics";
@@ -62,6 +63,7 @@ const interestOptions = chatbotServices.map((service) => ({
 }));
 
 export function ChatbotWidget() {
+  const pathname = usePathname();
   const startedAt = useMemo(() => Date.now().toString(), []);
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([initialMessage]);
@@ -93,6 +95,10 @@ export function ChatbotWidget() {
     website: "",
     startedAt,
   });
+
+  if (pathname?.startsWith("/crm")) {
+    return null;
+  }
 
   function appendMessage(role: ChatMessage["role"], content: string) {
     setMessages((current) => [

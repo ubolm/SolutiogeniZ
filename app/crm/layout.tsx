@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 
+import { CrmLogoutButton } from "@/components/crm/CrmLogoutButton";
 import { CrmSidebarNav } from "@/components/crm/CrmSidebarNav";
 
 export default function CrmLayout({ children }: { children: ReactNode }) {
@@ -70,6 +71,7 @@ export default function CrmLayout({ children }: { children: ReactNode }) {
                   <span className="h-2 w-2 rounded-full bg-emerald-500" />
                   Operativo
                 </div>
+                <CrmLogoutButton />
               </div>
             </div>
           </div>
