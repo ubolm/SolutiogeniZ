@@ -481,7 +481,7 @@ export function LeadPipelineManager({
 
   if (leads.length === 0) {
     return (
-      <p className="rounded-2xl border border-dashed border-line bg-paper px-4 py-6 text-sm text-muted">
+      <p className="rounded-2xl border border-dashed border-line bg-paper px-4 py-5 text-sm text-muted">
         Todavia no hay leads guardados. Cuando alguien deje sus datos desde el
         chatbot, van a aparecer aca.
       </p>
@@ -490,13 +490,13 @@ export function LeadPipelineManager({
 
   return (
     <div className="grid gap-5">
-      <section className="rounded-[1.6rem] border border-line bg-[#f8f9fc] p-4">
+      <section className="rounded-[1.35rem] border border-line bg-[#f8f9fc] p-3.5">
         <div className="flex items-center gap-2 text-sm font-semibold text-ink">
           <Filter aria-hidden="true" size={16} />
           Buscar y filtrar leads
         </div>
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-[1.3fr_0.9fr_0.9fr_1fr]">
+        <div className="mt-3 grid gap-2.5 lg:grid-cols-[1.2fr_0.85fr_0.85fr_1fr]">
           <label className="grid gap-1.5">
             <span className="text-xs font-semibold text-muted">Buscar</span>
             <div className="field flex min-h-11 items-center gap-2 px-3 py-0">
@@ -562,14 +562,14 @@ export function LeadPipelineManager({
         </p>
       </section>
 
-      <div className="flex gap-4 overflow-x-auto pb-2">
+      <div className="flex gap-3 overflow-x-auto pb-2">
         {crmLeadStatuses.map((status) => {
           const columnLeads = leadsByStatus[status];
           const isDropTarget = dropTargetStatus === status;
 
           return (
             <section
-              className={`flex min-h-[34rem] w-[20rem] shrink-0 flex-col rounded-[1.8rem] border bg-[#f8f9fc] p-4 transition ${
+              className={`flex min-h-[30rem] w-[18rem] shrink-0 flex-col rounded-[1.5rem] border bg-[#f8f9fc] p-3.5 transition ${
                 isDropTarget
                   ? "border-primary-strong shadow-[0_0_0_3px_rgba(68,84,245,0.12)]"
                   : "border-line"
@@ -620,9 +620,9 @@ export function LeadPipelineManager({
                 </span>
               </div>
 
-              <div className="mt-4 grid gap-3">
+              <div className="mt-3 grid gap-2.5">
                 {columnLeads.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-line bg-white px-4 py-6 text-sm text-muted">
+                  <div className="rounded-2xl border border-dashed border-line bg-white px-4 py-5 text-sm text-muted">
                     {filteredLeads.length === 0
                       ? "No hay leads que coincidan con los filtros."
                       : "Solta un lead aca para moverlo a esta etapa."}
@@ -658,7 +658,7 @@ export function LeadPipelineManager({
 
                     return (
                       <article
-                        className={`rounded-[1.5rem] border border-white bg-white p-4 shadow-[0_1px_0_rgba(11,11,15,0.03)] transition ${
+                        className={`rounded-[1.2rem] border border-white bg-white p-3.5 shadow-[0_1px_0_rgba(11,11,15,0.03)] transition ${
                           isDragging ? "opacity-50" : ""
                         }`}
                         draggable
@@ -808,7 +808,7 @@ export function LeadPipelineManager({
                         </div>
 
                         {isExpanded ? (
-                          <div className="mt-4 grid gap-3 border-t border-line pt-4">
+                          <div className="mt-3 grid gap-2.5 border-t border-line pt-3">
                             <div className="text-xs leading-5 text-muted">
                               <p>{lead.email}</p>
                               {lead.phone ? <p>{lead.phone}</p> : null}
@@ -818,7 +818,7 @@ export function LeadPipelineManager({
                               <p>Origen: {formatSourceLabel(lead.source)}</p>
                             </div>
 
-                            <section className="grid gap-3 rounded-[1.5rem] border border-line bg-[#f8f9fc] p-4">
+                            <section className="grid gap-2.5 rounded-[1.2rem] border border-line bg-[#f8f9fc] p-3.5">
                               <div className="flex items-start justify-between gap-3">
                                 <div>
                                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">
