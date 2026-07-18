@@ -17,6 +17,8 @@ import { CrmSurfaceCard } from "@/components/crm/CrmSurfaceCard";
 import { TaskInboxBoard } from "@/components/crm/TaskInboxBoard";
 import { getCrmSnapshot } from "@/lib/crm-store";
 
+export const dynamic = "force-dynamic";
+
 type AlertTone = "danger" | "warning" | "positive" | "neutral";
 
 function formatDate(value: string) {

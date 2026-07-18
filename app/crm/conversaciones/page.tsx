@@ -2,6 +2,8 @@ import { CrmPageIntro } from "@/components/crm/CrmPageIntro";
 import { ConversationInboxPanel } from "@/components/crm/ConversationInboxPanel";
 import { getCrmSnapshot } from "@/lib/crm-store";
 
+export const dynamic = "force-dynamic";
+
 export default async function CrmConversationsPage() {
   const snapshot = await getCrmSnapshot();
   const webCount = snapshot.conversations.filter(

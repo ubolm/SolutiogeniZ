@@ -5,6 +5,8 @@ import { ArrowLeft } from "lucide-react";
 import { LeadDetailWorkspace } from "@/components/crm/LeadDetailWorkspace";
 import { getCrmLeadDetail } from "@/lib/crm-store";
 
+export const dynamic = "force-dynamic";
+
 const statusAccent = {
   nuevo: "bg-[#eef4ff] text-[#2f5bea] border-[#c9d8ff]",
   contactado: "bg-[#effaf4] text-[#16794e] border-[#bde7cc]",

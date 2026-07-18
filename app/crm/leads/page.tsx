@@ -4,6 +4,8 @@ import { LeadPipelineManager } from "@/components/crm/LeadPipelineManager";
 import { ManualLeadForm } from "@/components/crm/ManualLeadForm";
 import { getCrmSnapshot } from "@/lib/crm-store";
 
+export const dynamic = "force-dynamic";
+
 export default async function CrmLeadsPage() {
   const snapshot = await getCrmSnapshot();
 

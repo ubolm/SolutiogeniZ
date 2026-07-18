@@ -5,6 +5,8 @@ import { CrmPageIntro } from "@/components/crm/CrmPageIntro";
 import { CrmSurfaceCard } from "@/components/crm/CrmSurfaceCard";
 import { searchCrm } from "@/lib/crm-store";
 
+export const dynamic = "force-dynamic";
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("es-AR", {
     day: "2-digit",

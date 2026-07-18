@@ -2,6 +2,8 @@ import { CrmPageIntro } from "@/components/crm/CrmPageIntro";
 import { OwnerWorkspacePanel } from "@/components/crm/OwnerWorkspacePanel";
 import { getCrmSnapshot } from "@/lib/crm-store";
 
+export const dynamic = "force-dynamic";
+
 export default async function CrmMyWorkPage() {
   const snapshot = await getCrmSnapshot();
   const assignedLeads = snapshot.leads.filter(

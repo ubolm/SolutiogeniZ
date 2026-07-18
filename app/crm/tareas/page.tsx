@@ -2,6 +2,8 @@ import { CrmPageIntro } from "@/components/crm/CrmPageIntro";
 import { TaskInboxBoard } from "@/components/crm/TaskInboxBoard";
 import { getCrmSnapshot } from "@/lib/crm-store";
 
+export const dynamic = "force-dynamic";
+
 export default async function CrmTasksPage() {
   const snapshot = await getCrmSnapshot();
   const pendingTasks = snapshot.tasks.filter((task) => task.status === "pendiente");
