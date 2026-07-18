@@ -1,6 +1,3 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
-import path from "path";
-
 import type {
   ChatbotIntent,
   ChatbotLeadInterest,
@@ -8,71 +5,35 @@ import type {
   ChatbotSource,
 } from "@/lib/chatbot";
 import type { ChatbotLeadFormState } from "@/lib/chatbot-lead";
+import {
+  createCrmLeadActivity as createCrmLeadActivityFile,
+  createCrmTask as createCrmTaskFile,
+  createManualCrmLead as createManualCrmLeadFile,
+  getCrmSnapshot as getCrmSnapshotFile,
+  persistChatbotLead as persistChatbotLeadFile,
+  persistWebChatMessage as persistWebChatMessageFile,
+  persistWhatsAppMessage as persistWhatsAppMessageFile,
+  updateCrmLead as updateCrmLeadFile,
+  updateCrmTask as updateCrmTaskFile,
+  type CrmActivity,
+  type CrmConversation,
+  type CrmLead,
+  type CrmTask,
+} from "@/lib/crm-store-file";
+import {
+  createCrmLeadActivityPostgres,
+  createCrmTaskPostgres,
+  createManualCrmLeadPostgres,
+  getCrmSnapshotPostgres,
+  persistChatbotLeadPostgres,
+  persistWebChatMessagePostgres,
+  persistWhatsAppMessagePostgres,
+  updateCrmLeadPostgres,
+  updateCrmTaskPostgres,
+} from "@/lib/crm-store-postgres";
+import { isPostgresConfigured } from "@/lib/postgres";
 
-export type CrmLead = {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  source: ChatbotSource;
-  sourceDetail: "chatbot";
-  name: string;
-  company: string;
-  email: string;
-  phone: string;
-  interest: ChatbotLeadInterest | "sin-definir";
-  summary: string;
-  priority: "media";
-  status: ChatbotLeadStatus;
-  owner: string;
-  lastContactAt: string;
-  nextActionAt: string;
-  notes: string;
-};
-
-export type CrmConversation = {
-  id: string;
-  leadId: string;
-  channel: ChatbotSource;
-  startedAt: string;
-  lastMessageAt: string;
-  transcriptSummary: string;
-  handoffRequested: boolean;
-  detectedIntent: ChatbotIntent | "consulta_general";
-};
-
-export type CrmActivity = {
-  id: string;
-  leadId: string;
-  type:
-    | "lead_created"
-    | "conversation_captured"
-    | "web_message_received"
-    | "web_message_sent"
-    | "lead_updated"
-    | "whatsapp_message_received"
-    | "whatsapp_message_sent";
-  description: string;
-  createdAt: string;
-  createdBy: "chatbot";
-};
-
-export type CrmTask = {
-  id: string;
-  leadId: string;
-  title: string;
-  type: "llamada" | "reunion" | "propuesta" | "seguimiento" | "otro";
-  dueAt: string;
-  status: "pendiente" | "hecha";
-  createdAt: string;
-  completedAt?: string;
-};
-
-type CrmStore = {
-  leads: CrmLead[];
-  conversations: CrmConversation[];
-  activities: CrmActivity[];
-  tasks: CrmTask[];
-};
+export type { CrmActivity, CrmConversation, CrmLead, CrmTask };
 
 export type CrmSearchLeadResult = CrmLead & {
   matchReason: string;
@@ -95,14 +56,9 @@ export type CrmSearchResults = {
   conversations: CrmSearchConversationResult[];
 };
 
-type ChatTranscriptMessage = {
-  role: "assistant" | "user";
-  content: string;
-};
-
 type PersistChatbotLeadInput = {
   lead: ChatbotLeadFormState;
-  transcript: ChatTranscriptMessage[];
+  transcript: Array<{ role: "assistant" | "user"; content: string }>;
   intent?: ChatbotIntent;
   detectedInterest?: ChatbotLeadInterest | "";
   sessionId?: string;
@@ -127,40 +83,42 @@ type CreateManualLeadInput = {
   notes?: string;
 };
 
-const dataDirectory = path.join(process.cwd(), "data");
-const storePath = path.join(dataDirectory, "crm-store.json");
-
-const defaultStore: CrmStore = {
-  leads: [],
-  conversations: [],
-  activities: [],
-  tasks: [],
+type UpdateCrmLeadInput = {
+  id: string;
+  status?: ChatbotLeadStatus;
+  owner?: string;
+  nextActionAt?: string;
+  notes?: string;
 };
 
-let writeQueue = Promise.resolve();
+type CreateCrmLeadActivityInput = {
+  leadId: string;
+  description: string;
+  kind?: "note" | "contact";
+  nextActionAt?: string;
+};
 
-function createId(prefix: string) {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
+type CreateCrmTaskInput = {
+  leadId: string;
+  title: string;
+  type: CrmTask["type"];
+  dueAt: string;
+};
 
-function buildSummary(lead: ChatbotLeadFormState) {
-  return [
-    `Interes: ${lead.interest || "sin-definir"}`,
-    `Proceso actual: ${lead.currentProcess}`,
-    `Problema principal: ${lead.mainProblem}`,
-  ].join(" | ");
-}
+type UpdateCrmTaskInput = {
+  leadId: string;
+  taskId: string;
+  status: CrmTask["status"];
+};
 
-function buildTranscriptSummary(messages: ChatTranscriptMessage[]) {
-  if (messages.length === 0) {
-    return "No se registro transcripcion inicial.";
-  }
-
-  return messages
-    .slice(-8)
-    .map((message) => `${message.role === "user" ? "Cliente" : "Bot"}: ${message.content}`)
-    .join(" || ");
-}
+type PersistWhatsAppMessageInput = {
+  from: string;
+  contactName?: string;
+  message: string;
+  reply?: string;
+  detectedInterest?: ChatbotLeadInterest | "";
+  intent?: ChatbotIntent;
+};
 
 function normalizeSearchValue(value: string) {
   return value
@@ -188,307 +146,18 @@ function findMatchReason(
   return null;
 }
 
-async function ensureStoreFile() {
-  await mkdir(dataDirectory, { recursive: true });
-
-  try {
-    await readFile(storePath, "utf8");
-  } catch {
-    await writeFile(storePath, JSON.stringify(defaultStore, null, 2), "utf8");
-  }
-}
-
-async function readStore() {
-  await ensureStoreFile();
-  const raw = await readFile(storePath, "utf8");
-
-  try {
-    const parsed = JSON.parse(raw) as Partial<CrmStore>;
-    return {
-      leads: Array.isArray(parsed.leads) ? parsed.leads : [],
-      conversations: Array.isArray(parsed.conversations)
-        ? parsed.conversations
-        : [],
-      activities: Array.isArray(parsed.activities) ? parsed.activities : [],
-      tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
-    } satisfies CrmStore;
-  } catch {
-    return defaultStore;
-  }
-}
-
-async function writeStore(store: CrmStore) {
-  await ensureStoreFile();
-  await writeFile(storePath, JSON.stringify(store, null, 2), "utf8");
-}
-
-async function updateStore<T>(updater: (store: CrmStore) => T | Promise<T>) {
-  const pending = writeQueue.then(async () => {
-    const store = await readStore();
-    const result = await updater(store);
-    await writeStore(store);
-    return result;
-  });
-
-  writeQueue = pending.then(
-    () => undefined,
-    () => undefined,
-  );
-
-  return pending;
-}
-
-export async function persistChatbotLead({
-  lead,
-  transcript,
-  intent,
-  detectedInterest,
-  sessionId,
-}: PersistChatbotLeadInput) {
-  return updateStore((store) => {
-    const now = new Date().toISOString();
-    const sessionPhone = sessionId ? `web:${sessionId}` : "";
-    const existingWebLead = sessionPhone
-      ? store.leads.find(
-          (item) => item.source === "web" && item.phone === sessionPhone,
-        )
-      : null;
-    const leadId = existingWebLead?.id ?? createId("lead");
-    const conversationId = createId("conv");
-    const nextActionAt = new Date(
-      Date.now() + 24 * 60 * 60 * 1000,
-    ).toISOString();
-
-    const crmLead: CrmLead = existingWebLead
-      ? {
-          ...existingWebLead,
-          updatedAt: now,
-          source: lead.source,
-          name: lead.name,
-          company: lead.company,
-          email: lead.email,
-          phone: lead.phone?.trim() || existingWebLead.phone,
-          interest: lead.interest || detectedInterest || "sin-definir",
-          summary: buildSummary(lead),
-          status: "nuevo",
-          lastContactAt: now,
-          nextActionAt,
-        }
-      : {
-          id: leadId,
-          createdAt: now,
-          updatedAt: now,
-          source: lead.source,
-          sourceDetail: "chatbot",
-          name: lead.name,
-          company: lead.company,
-          email: lead.email,
-          phone: lead.phone?.trim() || "",
-          interest: lead.interest || detectedInterest || "sin-definir",
-          summary: buildSummary(lead),
-          priority: "media",
-          status: "nuevo",
-          owner: "Sin asignar",
-          lastContactAt: now,
-          nextActionAt,
-          notes: "",
-        };
-
-    const existingConversation = store.conversations.find(
-      (conversation) =>
-        conversation.leadId === leadId && conversation.channel === lead.source,
-    );
-
-    const crmConversation: CrmConversation = existingConversation
-      ? {
-          ...existingConversation,
-          lastMessageAt: now,
-          transcriptSummary: buildTranscriptSummary(transcript),
-          handoffRequested: true,
-          detectedIntent: intent || "consulta_general",
-        }
-      : {
-          id: conversationId,
-          leadId,
-          channel: lead.source,
-          startedAt: now,
-          lastMessageAt: now,
-          transcriptSummary: buildTranscriptSummary(transcript),
-          handoffRequested: true,
-          detectedIntent: intent || "consulta_general",
-        };
-
-    if (existingWebLead) {
-      const leadIndex = store.leads.findIndex((item) => item.id === leadId);
-
-      if (leadIndex >= 0) {
-        store.leads[leadIndex] = crmLead;
-      }
-    } else {
-      store.leads.unshift(crmLead);
-      store.activities.unshift({
-        id: createId("act"),
-        leadId,
-        type: "lead_created",
-        description: `Lead creado desde chatbot para ${lead.company}.`,
-        createdAt: now,
-        createdBy: "chatbot",
-      });
-    }
-
-    if (existingConversation) {
-      const conversationIndex = store.conversations.findIndex(
-        (conversation) => conversation.id === existingConversation.id,
-      );
-
-      if (conversationIndex >= 0) {
-        store.conversations[conversationIndex] = crmConversation;
-      }
-    } else {
-      store.conversations.unshift(crmConversation);
-    }
-
-    store.activities.unshift({
-      id: createId("act"),
-      leadId,
-      type: "conversation_captured",
-      description: "Conversacion inicial registrada desde el chatbot web.",
-      createdAt: now,
-      createdBy: "chatbot",
-    });
-
-    return {
-      lead: crmLead,
-      conversation: crmConversation,
-    };
-  });
-}
-
-export async function persistWebChatMessage({
-  sessionId,
-  message,
-  reply,
-  detectedInterest,
-  intent,
-}: PersistWebChatMessageInput) {
-  return updateStore((store) => {
-    const now = new Date().toISOString();
-    const sessionPhone = `web:${sessionId}`;
-    const nextActionAt = new Date(
-      Date.now() + 24 * 60 * 60 * 1000,
-    ).toISOString();
-
-    let lead = store.leads.find(
-      (item) => item.source === "web" && item.phone === sessionPhone,
-    );
-
-    if (!lead) {
-      lead = {
-        id: createId("lead"),
-        createdAt: now,
-        updatedAt: now,
-        source: "web",
-        sourceDetail: "chatbot",
-        name: "Visitante web",
-        company: "Lead web sin datos",
-        email: "",
-        phone: sessionPhone,
-        interest: detectedInterest || "sin-definir",
-        summary: `Web chat: ${message}`,
-        priority: "media",
-        status: "nuevo",
-        owner: "Sin asignar",
-        lastContactAt: now,
-        nextActionAt,
-        notes: "",
-      };
-
-      store.leads.unshift(lead);
-      store.activities.unshift({
-        id: createId("act"),
-        leadId: lead.id,
-        type: "lead_created",
-        description: "Lead web creado desde una nueva conversacion del chatbot.",
-        createdAt: now,
-        createdBy: "chatbot",
-      });
-    } else {
-      lead.updatedAt = now;
-      lead.lastContactAt = now;
-      lead.summary = `Web chat: ${message}`;
-
-      if (
-        (lead.interest === "sin-definir" || !lead.interest) &&
-        detectedInterest
-      ) {
-        lead.interest = detectedInterest;
-      }
-    }
-
-    const existingConversation = store.conversations.find(
-      (conversation) =>
-        conversation.leadId === lead.id && conversation.channel === "web",
-    );
-
-    if (!existingConversation) {
-      store.conversations.unshift({
-        id: createId("conv"),
-        leadId: lead.id,
-        channel: "web",
-        startedAt: now,
-        lastMessageAt: now,
-        transcriptSummary: [
-          `Cliente: ${message}`,
-          reply ? `Bot: ${reply}` : "",
-        ]
-          .filter(Boolean)
-          .join(" || "),
-        handoffRequested: false,
-        detectedIntent: intent || "consulta_general",
-      });
-    } else {
-      existingConversation.lastMessageAt = now;
-      existingConversation.detectedIntent =
-        intent || existingConversation.detectedIntent;
-      existingConversation.transcriptSummary = [
-        existingConversation.transcriptSummary,
-        `Cliente: ${message}`,
-        reply ? `Bot: ${reply}` : "",
-      ]
-        .filter(Boolean)
-        .join(" || ");
-    }
-
-    store.activities.unshift({
-      id: createId("act"),
-      leadId: lead.id,
-      type: "web_message_received",
-      description: "Mensaje recibido desde el chatbot web.",
-      createdAt: now,
-      createdBy: "chatbot",
-    });
-
-    if (reply) {
-      store.activities.unshift({
-        id: createId("act"),
-        leadId: lead.id,
-        type: "web_message_sent",
-        description: "Respuesta automatica enviada desde el chatbot web.",
-        createdAt: now,
-        createdBy: "chatbot",
-      });
-    }
-
-    return lead;
-  });
+async function readBackendSnapshot() {
+  return isPostgresConfigured()
+    ? getCrmSnapshotPostgres()
+    : getCrmSnapshotFile();
 }
 
 export async function getCrmSnapshot() {
-  return readStore();
+  return readBackendSnapshot();
 }
 
 export async function searchCrm(query: string): Promise<CrmSearchResults> {
-  const store = await readStore();
+  const store = await readBackendSnapshot();
   const normalizedQuery = normalizeSearchValue(query.trim());
 
   if (!normalizedQuery) {
@@ -562,7 +231,7 @@ export async function searchCrm(query: string): Promise<CrmSearchResults> {
 }
 
 export async function getCrmLeadDetail(id: string) {
-  const store = await readStore();
+  const store = await readBackendSnapshot();
   const lead = store.leads.find((item) => item.id === id) ?? null;
 
   if (!lead) {
@@ -579,417 +248,56 @@ export async function getCrmLeadDetail(id: string) {
   };
 }
 
-export async function createManualCrmLead({
-  name,
-  company,
-  email,
-  phone,
-  interest,
-  summary,
-  owner,
-  notes,
-}: CreateManualLeadInput) {
-  return updateStore((store) => {
-    const now = new Date().toISOString();
-    const leadId = createId("lead");
-    const nextActionAt = new Date(
-      Date.now() + 24 * 60 * 60 * 1000,
-    ).toISOString();
-
-    const lead: CrmLead = {
-      id: leadId,
-      createdAt: now,
-      updatedAt: now,
-      source: "manual",
-      sourceDetail: "chatbot",
-      name: name.trim(),
-      company: company.trim(),
-      email: email?.trim() || "",
-      phone: phone?.trim() || "",
-      interest: interest || "sin-definir",
-      summary: summary.trim(),
-      priority: "media",
-      status: "nuevo",
-      owner: owner?.trim() || "Sin asignar",
-      lastContactAt: now,
-      nextActionAt,
-      notes: notes?.trim() || "",
-    };
-
-    store.leads.unshift(lead);
-    store.activities.unshift({
-      id: createId("act"),
-      leadId,
-      type: "lead_created",
-      description: `Lead cargado manualmente para ${lead.company}.`,
-      createdAt: now,
-      createdBy: "chatbot",
-    });
-
-    return lead;
-  });
+export async function persistChatbotLead(input: PersistChatbotLeadInput) {
+  return isPostgresConfigured()
+    ? persistChatbotLeadPostgres(input)
+    : persistChatbotLeadFile(input);
 }
 
-type UpdateCrmLeadInput = {
-  id: string;
-  status?: ChatbotLeadStatus;
-  owner?: string;
-  nextActionAt?: string;
-  notes?: string;
-};
-
-export async function updateCrmLead({
-  id,
-  status,
-  owner,
-  nextActionAt,
-  notes,
-}: UpdateCrmLeadInput) {
-  return updateStore((store) => {
-    const lead = store.leads.find((item) => item.id === id);
-
-    if (!lead) {
-      throw new Error("Lead not found.");
-    }
-
-    const changes: string[] = [];
-    const now = new Date().toISOString();
-
-    if (status && status !== lead.status) {
-      changes.push(`estado: ${lead.status} -> ${status}`);
-      lead.status = status;
-    }
-
-    if (typeof owner === "string" && owner.trim() !== lead.owner) {
-      changes.push(
-        `responsable: ${lead.owner} -> ${owner.trim() || "Sin asignar"}`,
-      );
-      lead.owner = owner.trim() || "Sin asignar";
-    }
-
-    if (typeof nextActionAt === "string" && nextActionAt !== lead.nextActionAt) {
-      changes.push("proxima accion actualizada");
-      lead.nextActionAt = nextActionAt;
-    }
-
-    if (typeof notes === "string" && notes !== lead.notes) {
-      changes.push("notas actualizadas");
-      lead.notes = notes;
-    }
-
-    lead.updatedAt = now;
-    lead.lastContactAt = now;
-
-    if (changes.length > 0) {
-      store.activities.unshift({
-        id: createId("act"),
-        leadId: lead.id,
-        type: "lead_updated",
-        description: `Lead ${lead.company} actualizado (${changes.join(", ")}).`,
-        createdAt: now,
-        createdBy: "chatbot",
-      });
-    }
-
-    return lead;
-  });
+export async function persistWebChatMessage(
+  input: PersistWebChatMessageInput,
+) {
+  return isPostgresConfigured()
+    ? persistWebChatMessagePostgres(input)
+    : persistWebChatMessageFile(input);
 }
 
-type CreateCrmLeadActivityInput = {
-  leadId: string;
-  description: string;
-  kind?: "note" | "contact";
-  nextActionAt?: string;
-};
-
-export async function createCrmLeadActivity({
-  leadId,
-  description,
-  kind = "note",
-  nextActionAt,
-}: CreateCrmLeadActivityInput) {
-  return updateStore((store) => {
-    const lead = store.leads.find((item) => item.id === leadId);
-
-    if (!lead) {
-      throw new Error("Lead not found.");
-    }
-
-    const now = new Date().toISOString();
-    const cleanDescription = description.trim();
-
-    if (!cleanDescription) {
-      throw new Error("Description required.");
-    }
-
-    if (kind === "contact") {
-      lead.lastContactAt = now;
-      lead.updatedAt = now;
-
-      if (lead.status === "nuevo") {
-        lead.status = "contactado";
-      }
-    } else {
-      lead.updatedAt = now;
-    }
-
-    if (typeof nextActionAt === "string" && !Number.isNaN(Date.parse(nextActionAt))) {
-      lead.nextActionAt = nextActionAt;
-    }
-
-    lead.notes = lead.notes
-      ? `${lead.notes}\n${cleanDescription}`
-      : cleanDescription;
-
-    store.activities.unshift({
-      id: createId("act"),
-      leadId: lead.id,
-      type: "lead_updated",
-      description:
-        kind === "contact"
-          ? `Contacto registrado con ${lead.company}: ${cleanDescription}`
-          : `Nota agregada para ${lead.company}: ${cleanDescription}`,
-      createdAt: now,
-      createdBy: "chatbot",
-    });
-
-    return lead;
-  });
+export async function createManualCrmLead(input: CreateManualLeadInput) {
+  return isPostgresConfigured()
+    ? createManualCrmLeadPostgres(input)
+    : createManualCrmLeadFile(input);
 }
 
-type CreateCrmTaskInput = {
-  leadId: string;
-  title: string;
-  type: CrmTask["type"];
-  dueAt: string;
-};
-
-export async function createCrmTask({
-  leadId,
-  title,
-  type,
-  dueAt,
-}: CreateCrmTaskInput) {
-  return updateStore((store) => {
-    const lead = store.leads.find((item) => item.id === leadId);
-
-    if (!lead) {
-      throw new Error("Lead not found.");
-    }
-
-    const cleanTitle = title.trim();
-
-    if (!cleanTitle) {
-      throw new Error("Task title required.");
-    }
-
-    if (Number.isNaN(Date.parse(dueAt))) {
-      throw new Error("Task due date invalid.");
-    }
-
-    const now = new Date().toISOString();
-    const task: CrmTask = {
-      id: createId("task"),
-      leadId,
-      title: cleanTitle,
-      type,
-      dueAt,
-      status: "pendiente",
-      createdAt: now,
-    };
-
-    store.tasks.unshift(task);
-    lead.updatedAt = now;
-    lead.nextActionAt = dueAt;
-
-    store.activities.unshift({
-      id: createId("act"),
-      leadId,
-      type: "lead_updated",
-      description: `Tarea creada para ${lead.company}: ${cleanTitle}.`,
-      createdAt: now,
-      createdBy: "chatbot",
-    });
-
-    return task;
-  });
+export async function updateCrmLead(input: UpdateCrmLeadInput) {
+  return isPostgresConfigured()
+    ? updateCrmLeadPostgres(input)
+    : updateCrmLeadFile(input);
 }
 
-type UpdateCrmTaskInput = {
-  leadId: string;
-  taskId: string;
-  status: CrmTask["status"];
-};
-
-export async function updateCrmTask({
-  leadId,
-  taskId,
-  status,
-}: UpdateCrmTaskInput) {
-  return updateStore((store) => {
-    const lead = store.leads.find((item) => item.id === leadId);
-    const task = store.tasks.find(
-      (item) => item.id === taskId && item.leadId === leadId,
-    );
-
-    if (!lead || !task) {
-      throw new Error("Task not found.");
-    }
-
-    if (task.status === status) {
-      return task;
-    }
-
-    const now = new Date().toISOString();
-    task.status = status;
-    task.completedAt = status === "hecha" ? now : undefined;
-    lead.updatedAt = now;
-
-    if (status === "hecha") {
-      lead.lastContactAt = now;
-    }
-
-    store.activities.unshift({
-      id: createId("act"),
-      leadId,
-      type: "lead_updated",
-      description:
-        status === "hecha"
-          ? `Tarea completada para ${lead.company}: ${task.title}.`
-          : `Tarea reabierta para ${lead.company}: ${task.title}.`,
-      createdAt: now,
-      createdBy: "chatbot",
-    });
-
-    return task;
-  });
+export async function createCrmLeadActivity(
+  input: CreateCrmLeadActivityInput,
+) {
+  return isPostgresConfigured()
+    ? createCrmLeadActivityPostgres(input)
+    : createCrmLeadActivityFile(input);
 }
 
-type PersistWhatsAppMessageInput = {
-  from: string;
-  contactName?: string;
-  message: string;
-  reply?: string;
-  detectedInterest?: ChatbotLeadInterest | "";
-  intent?: ChatbotIntent;
-};
+export async function createCrmTask(input: CreateCrmTaskInput) {
+  return isPostgresConfigured()
+    ? createCrmTaskPostgres(input)
+    : createCrmTaskFile(input);
+}
 
-export async function persistWhatsAppMessage({
-  from,
-  contactName,
-  message,
-  reply,
-  detectedInterest,
-  intent,
-}: PersistWhatsAppMessageInput) {
-  return updateStore((store) => {
-    const now = new Date().toISOString();
-    const normalizedPhone = from.trim();
+export async function updateCrmTask(input: UpdateCrmTaskInput) {
+  return isPostgresConfigured()
+    ? updateCrmTaskPostgres(input)
+    : updateCrmTaskFile(input);
+}
 
-    let lead = store.leads.find((item) => item.phone === normalizedPhone);
-
-    if (!lead) {
-      const leadId = createId("lead");
-      const nextActionAt = new Date(
-        Date.now() + 24 * 60 * 60 * 1000,
-      ).toISOString();
-
-      lead = {
-        id: leadId,
-        createdAt: now,
-        updatedAt: now,
-        source: "whatsapp",
-        sourceDetail: "chatbot",
-        name: contactName?.trim() || "Contacto WhatsApp",
-        company: "Sin empresa",
-        email: "",
-        phone: normalizedPhone,
-        interest: detectedInterest || "sin-definir",
-        summary: `WhatsApp: ${message}`,
-        priority: "media",
-        status: "nuevo",
-        owner: "Sin asignar",
-        lastContactAt: now,
-        nextActionAt,
-        notes: "",
-      };
-
-      store.leads.unshift(lead);
-      store.activities.unshift({
-        id: createId("act"),
-        leadId,
-        type: "lead_created",
-        description: `Lead creado desde WhatsApp para ${lead.name}.`,
-        createdAt: now,
-        createdBy: "chatbot",
-      });
-    } else {
-      lead.updatedAt = now;
-      lead.lastContactAt = now;
-      lead.source = "whatsapp";
-
-      if (
-        (lead.interest === "sin-definir" || !lead.interest) &&
-        detectedInterest
-      ) {
-        lead.interest = detectedInterest;
-      }
-    }
-
-    const existingConversation = store.conversations.find(
-      (conversation) =>
-        conversation.leadId === lead.id && conversation.channel === "whatsapp",
-    );
-
-    if (!existingConversation) {
-      store.conversations.unshift({
-        id: createId("conv"),
-        leadId: lead.id,
-        channel: "whatsapp",
-        startedAt: now,
-        lastMessageAt: now,
-        transcriptSummary: [
-          `Cliente: ${message}`,
-          reply ? `Bot: ${reply}` : "",
-        ]
-          .filter(Boolean)
-          .join(" || "),
-        handoffRequested: false,
-        detectedIntent: intent || "consulta_general",
-      });
-    } else {
-      existingConversation.lastMessageAt = now;
-      existingConversation.detectedIntent =
-        intent || existingConversation.detectedIntent;
-      existingConversation.transcriptSummary = [
-        existingConversation.transcriptSummary,
-        `Cliente: ${message}`,
-        reply ? `Bot: ${reply}` : "",
-      ]
-        .filter(Boolean)
-        .join(" || ");
-    }
-
-    store.activities.unshift({
-      id: createId("act"),
-      leadId: lead.id,
-      type: "whatsapp_message_received",
-      description: `Mensaje recibido por WhatsApp desde ${lead.name}.`,
-      createdAt: now,
-      createdBy: "chatbot",
-    });
-
-    if (reply) {
-      store.activities.unshift({
-        id: createId("act"),
-        leadId: lead.id,
-        type: "whatsapp_message_sent",
-        description: `Respuesta automatica enviada por WhatsApp a ${lead.name}.`,
-        createdAt: now,
-        createdBy: "chatbot",
-      });
-    }
-
-    return lead;
-  });
+export async function persistWhatsAppMessage(
+  input: PersistWhatsAppMessageInput,
+) {
+  return isPostgresConfigured()
+    ? persistWhatsAppMessagePostgres(input)
+    : persistWhatsAppMessageFile(input);
 }

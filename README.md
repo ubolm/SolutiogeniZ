@@ -33,6 +33,8 @@ N8N_LEAD_WEBHOOK_URL=
 NEXT_PUBLIC_BOOKING_URL=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 RESEND_API_KEY=
+POSTGRES_URL=
+POSTGRES_SSL=false
 ```
 
 - `CONTACT_TO_EMAIL`: correo que recibirá las consultas del formulario de contacto.
@@ -117,7 +119,19 @@ N8N_LEAD_WEBHOOK_URL=
 NEXT_PUBLIC_BOOKING_URL=
 NEXT_PUBLIC_SITE_URL=
 RESEND_API_KEY=
+POSTGRES_URL=
+POSTGRES_SSL=false
 ```
+
+## CRM y Postgres
+
+El CRM ya soporta Postgres como backend principal.
+
+- Si `POSTGRES_URL` o `DATABASE_URL` existen, el CRM usa la base.
+- Si no existen, sigue usando el archivo local como respaldo.
+- Las tablas del CRM se crean automaticamente en el primer arranque.
+
+Guia corta: `POSTGRES_CRM_SETUP.md`
 
 ## Pendientes
 
