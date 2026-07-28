@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { LeadDetailWorkspace } from "@/components/crm/LeadDetailWorkspace";
+import type { ChatbotLeadStatus } from "@/lib/chatbot";
 import {
   getCrmSessionCookieName,
   verifyCrmSessionToken,
@@ -13,7 +14,7 @@ import { getAssignableCrmUsers } from "@/lib/crm-users";
 
 export const dynamic = "force-dynamic";
 
-const statusAccent = {
+const statusAccent: Record<ChatbotLeadStatus, string> = {
   contactado: "bg-[#effaf4] text-[#16794e] border-[#bde7cc]",
   respondio: "bg-[#eef4ff] text-[#2f5bea] border-[#c9d8ff]",
   reunion_agendada: "bg-[#fff7e9] text-[#b56a06] border-[#f3d39a]",
@@ -21,7 +22,7 @@ const statusAccent = {
   negociacion: "bg-[#fff0f0] text-[#c54646] border-[#f1b9b9]",
   cliente: "bg-[#ebfbf2] text-[#0b7a43] border-[#b7e7ca]",
   perdido: "bg-[#f2f4f7] text-[#5b6472] border-[#d8dde5]",
-} as const;
+};
 
 export default async function CrmLeadDetailPage({
   params,
