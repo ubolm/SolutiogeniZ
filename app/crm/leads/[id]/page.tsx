@@ -24,6 +24,21 @@ const statusAccent: Record<ChatbotLeadStatus, string> = {
   perdido: "bg-[#f2f4f7] text-[#5b6472] border-[#d8dde5]",
 };
 
+function getLeadStatusAccent(status: unknown) {
+  if (
+    typeof status === "string" &&
+    Object.prototype.hasOwnProperty.call(statusAccent, status)
+  ) {
+    return statusAccent[status as ChatbotLeadStatus];
+  }
+
+  return statusAccent.contactado;
+}
+
+function formatLeadStatusLabel(status: unknown) {
+  return typeof status === "string" ? status.replaceAll("_", " ") : "contactado";
+}
+
 export default async function CrmLeadDetailPage({
   params,
 }: {
@@ -41,6 +56,8 @@ export default async function CrmLeadDetailPage({
   const { lead, activities, conversations, tasks } = detail;
   const ownerUsers =
     session?.role === "admin" ? await getAssignableCrmUsers() : [];
+  const leadStatusAccent = getLeadStatusAccent(lead.status);
+  const leadStatusLabel = formatLeadStatusLabel(lead.status);
 
   return (
     <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-6">
@@ -72,9 +89,9 @@ export default async function CrmLeadDetailPage({
           </div>
 
           <span
-            className={`inline-flex rounded-full border px-4 py-2 text-sm font-semibold ${statusAccent[lead.status]}`}
+            className={`inline-flex rounded-full border px-4 py-2 text-sm font-semibold ${leadStatusAccent}`}
           >
-            {lead.status.replace("_", " ")}
+            {leadStatusLabel}
           </span>
         </div>
       </section>
