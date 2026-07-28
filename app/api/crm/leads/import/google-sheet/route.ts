@@ -12,7 +12,10 @@ import {
   parseCsv,
 } from "@/lib/crm-import";
 import { createManualCrmLead } from "@/lib/crm-store";
-import { getAssignableCrmUsers } from "@/lib/crm-users";
+import {
+  getAssignableCrmUsers,
+  type CrmUserSummary,
+} from "@/lib/crm-users";
 
 type GoogleSheetPayload = {
   sheetUrl?: string;
@@ -146,7 +149,9 @@ export async function POST(request: Request) {
   }
 
   const assignableUsers = await getAssignableCrmUsers();
-  const validOwners = new Set(assignableUsers.map((user) => user.username));
+  const validOwners = new Set(
+    assignableUsers.map((user: CrmUserSummary) => user.username),
+  );
   const errors: string[] = [];
   let importedCount = 0;
 

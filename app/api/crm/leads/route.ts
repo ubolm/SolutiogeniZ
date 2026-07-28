@@ -6,7 +6,10 @@ import {
   verifyCrmSessionToken,
 } from "@/lib/crm-auth";
 import { createManualCrmLead } from "@/lib/crm-store";
-import { getAssignableCrmUsers } from "@/lib/crm-users";
+import {
+  getAssignableCrmUsers,
+  type CrmUserSummary,
+} from "@/lib/crm-users";
 
 type ManualLeadPayload = {
   name?: string;
@@ -182,7 +185,9 @@ export async function POST(request: Request) {
   }
 
   const assignableUsers = await getAssignableCrmUsers();
-  const validOwners = new Set(assignableUsers.map((user) => user.username));
+  const validOwners = new Set(
+    assignableUsers.map((user: CrmUserSummary) => user.username),
+  );
 
   if (owner && owner !== "Sin asignar" && !validOwners.has(owner)) {
     return NextResponse.json(
