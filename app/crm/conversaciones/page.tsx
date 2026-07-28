@@ -6,7 +6,11 @@ import {
   getCrmSessionCookieName,
   verifyCrmSessionToken,
 } from "@/lib/crm-auth";
-import { getCrmSnapshot, scopeCrmSnapshotToSession } from "@/lib/crm-store";
+import {
+  getCrmSnapshot,
+  scopeCrmSnapshotToSession,
+  type CrmConversation,
+} from "@/lib/crm-store";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +21,10 @@ export default async function CrmConversationsPage() {
   const role = session?.role ?? "vendedor";
   const snapshot = scopeCrmSnapshotToSession(await getCrmSnapshot(), session);
   const webCount = snapshot.conversations.filter(
-    (conversation) => conversation.channel === "web",
+    (conversation: CrmConversation) => conversation.channel === "web",
   ).length;
   const whatsappCount = snapshot.conversations.filter(
-    (conversation) => conversation.channel === "whatsapp",
+    (conversation: CrmConversation) => conversation.channel === "whatsapp",
   ).length;
 
   return (
