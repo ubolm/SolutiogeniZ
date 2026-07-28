@@ -2,7 +2,10 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import {
+  canAccessCrmPath,
+  getDefaultCrmPathForRole,
   getCrmSessionCookieName,
+  resolveCrmSafePathForRole,
   verifyCrmSessionToken,
 } from "@/lib/crm-auth";
 
@@ -31,7 +34,22 @@ export async function middleware(request: NextRequest) {
 
   if (session) {
     if (isLoginPage) {
-      return NextResponse.redirect(new URL("/crm", request.url));
+      return NextResponse.redirect(
+        new URL(getDefaultCrmPathForRole(session.role), request.url),
+      );
+    }
+
+    if (!canAccessCrmPath(session.role, pathname)) {
+      if (isCrmApi) {
+        return NextResponse.json(
+          { error: "No tienes permiso para usar esta accion del CRM." },
+          { status: 403 },
+        );
+      }
+
+      return NextResponse.redirect(
+        new URL(resolveCrmSafePathForRole(session.role, pathname), request.url),
+      );
     }
 
     return NextResponse.next();

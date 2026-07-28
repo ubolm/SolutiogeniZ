@@ -32,6 +32,7 @@ import {
   updateCrmTaskPostgres,
 } from "@/lib/crm-store-postgres";
 import { isPostgresConfigured } from "@/lib/postgres";
+import type { CrmSessionPayload } from "@/lib/crm-auth";
 
 export type { CrmActivity, CrmConversation, CrmLead, CrmTask };
 
@@ -55,6 +56,8 @@ export type CrmSearchResults = {
   tasks: CrmSearchTaskResult[];
   conversations: CrmSearchConversationResult[];
 };
+
+export type CrmSnapshot = Awaited<ReturnType<typeof readBackendSnapshot>>;
 
 type PersistChatbotLeadInput = {
   lead: ChatbotLeadFormState;
@@ -81,6 +84,9 @@ type CreateManualLeadInput = {
   summary: string;
   owner?: string;
   notes?: string;
+  nextActionAt?: string;
+  customerContext?: Partial<CrmLead["customerContext"]>;
+  extendedProfile?: Partial<CrmLead["extendedProfile"]>;
 };
 
 type UpdateCrmLeadInput = {
@@ -89,6 +95,8 @@ type UpdateCrmLeadInput = {
   owner?: string;
   nextActionAt?: string;
   notes?: string;
+  customerContext?: Partial<CrmLead["customerContext"]>;
+  extendedProfile?: Partial<CrmLead["extendedProfile"]>;
 };
 
 type CreateCrmLeadActivityInput = {
@@ -96,6 +104,7 @@ type CreateCrmLeadActivityInput = {
   description: string;
   kind?: "note" | "contact";
   nextActionAt?: string;
+  status?: ChatbotLeadStatus;
 };
 
 type CreateCrmTaskInput = {
@@ -156,8 +165,129 @@ export async function getCrmSnapshot() {
   return readBackendSnapshot();
 }
 
+function normalizeOwner(value: string | undefined) {
+  return (value || "").trim().toLowerCase();
+}
+
+export function canSessionAccessLead(
+  session: CrmSessionPayload | null | undefined,
+  lead: CrmLead,
+) {
+  if (!session) {
+    return false;
+  }
+
+  if (session.role === "admin") {
+    return true;
+  }
+
+  return normalizeOwner(lead.owner) === normalizeOwner(session.username);
+}
+
+export function scopeCrmSnapshotToSession(
+  snapshot: CrmSnapshot,
+  session: CrmSessionPayload | null | undefined,
+) {
+  if (!session || session.role === "admin") {
+    return snapshot;
+  }
+
+  const visibleLeads = snapshot.leads.filter((lead) =>
+    canSessionAccessLead(session, lead),
+  );
+  const visibleLeadIds = new Set(visibleLeads.map((lead) => lead.id));
+
+  return {
+    leads: visibleLeads,
+    conversations: snapshot.conversations.filter((conversation) =>
+      visibleLeadIds.has(conversation.leadId),
+    ),
+    activities: snapshot.activities.filter((activity) =>
+      visibleLeadIds.has(activity.leadId),
+    ),
+    tasks: snapshot.tasks.filter((task) => visibleLeadIds.has(task.leadId)),
+  };
+}
+
 export async function searchCrm(query: string): Promise<CrmSearchResults> {
   const store = await readBackendSnapshot();
+  const normalizedQuery = normalizeSearchValue(query.trim());
+
+  if (!normalizedQuery) {
+    return {
+      query: query.trim(),
+      leads: [],
+      tasks: [],
+      conversations: [],
+    };
+  }
+
+  const leadById = new Map(store.leads.map((lead) => [lead.id, lead]));
+
+  const leads = store.leads
+    .map((lead) => {
+      const matchReason = findMatchReason(normalizedQuery, [
+        { label: "Empresa", value: lead.company },
+        { label: "Contacto", value: lead.name },
+        { label: "Email", value: lead.email },
+        { label: "Telefono", value: lead.phone },
+        { label: "Interes", value: lead.interest },
+        { label: "Resumen", value: lead.summary },
+        { label: "Responsable", value: lead.owner },
+        { label: "Notas", value: lead.notes },
+      ]);
+
+      return matchReason ? { ...lead, matchReason } : null;
+    })
+    .filter((lead): lead is CrmSearchLeadResult => lead !== null);
+
+  const tasks = store.tasks
+    .map((task) => {
+      const lead = leadById.get(task.leadId) ?? null;
+      const matchReason = findMatchReason(normalizedQuery, [
+        { label: "Tarea", value: task.title },
+        { label: "Tipo", value: task.type },
+        { label: "Empresa", value: lead?.company },
+        { label: "Contacto", value: lead?.name },
+        { label: "Responsable", value: lead?.owner },
+      ]);
+
+      return matchReason ? { ...task, lead, matchReason } : null;
+    })
+    .filter((task): task is CrmSearchTaskResult => task !== null);
+
+  const conversations = store.conversations
+    .map((conversation) => {
+      const lead = leadById.get(conversation.leadId) ?? null;
+      const matchReason = findMatchReason(normalizedQuery, [
+        { label: "Canal", value: conversation.channel },
+        { label: "Intento detectado", value: conversation.detectedIntent },
+        { label: "Resumen", value: conversation.transcriptSummary },
+        { label: "Empresa", value: lead?.company },
+        { label: "Contacto", value: lead?.name },
+        { label: "Telefono", value: lead?.phone },
+      ]);
+
+      return matchReason ? { ...conversation, lead, matchReason } : null;
+    })
+    .filter(
+      (conversation): conversation is CrmSearchConversationResult =>
+        conversation !== null,
+    );
+
+  return {
+    query: query.trim(),
+    leads,
+    tasks,
+    conversations,
+  };
+}
+
+export async function searchCrmForSession(
+  query: string,
+  session: CrmSessionPayload | null | undefined,
+): Promise<CrmSearchResults> {
+  const store = scopeCrmSnapshotToSession(await readBackendSnapshot(), session);
   const normalizedQuery = normalizeSearchValue(query.trim());
 
   if (!normalizedQuery) {
@@ -245,6 +375,30 @@ export async function getCrmLeadDetail(id: string) {
       (conversation) => conversation.leadId === id,
     ),
     tasks: store.tasks.filter((task) => task.leadId === id),
+  };
+}
+
+export async function getCrmLeadDetailForSession(
+  id: string,
+  session: CrmSessionPayload | null | undefined,
+) {
+  const scopedStore = scopeCrmSnapshotToSession(
+    await readBackendSnapshot(),
+    session,
+  );
+  const lead = scopedStore.leads.find((item) => item.id === id) ?? null;
+
+  if (!lead) {
+    return null;
+  }
+
+  return {
+    lead,
+    activities: scopedStore.activities.filter((activity) => activity.leadId === id),
+    conversations: scopedStore.conversations.filter(
+      (conversation) => conversation.leadId === id,
+    ),
+    tasks: scopedStore.tasks.filter((task) => task.leadId === id),
   };
 }
 

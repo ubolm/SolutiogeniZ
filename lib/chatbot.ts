@@ -9,13 +9,13 @@ export type ChatbotLeadInterest =
   | "sin-definir";
 
 export type ChatbotLeadStatus =
-  | "nuevo"
   | "contactado"
-  | "calificado"
-  | "propuesta"
-  | "seguimiento"
-  | "cerrado_ganado"
-  | "cerrado_perdido";
+  | "respondio"
+  | "reunion_agendada"
+  | "propuesta_enviada"
+  | "negociacion"
+  | "cliente"
+  | "perdido";
 
 export type ChatbotSource = "web" | "whatsapp" | "manual";
 
@@ -238,13 +238,13 @@ export const chatbotGuardrails = [
 ];
 
 export const crmLeadStatuses: ChatbotLeadStatus[] = [
-  "nuevo",
   "contactado",
-  "calificado",
-  "propuesta",
-  "seguimiento",
-  "cerrado_ganado",
-  "cerrado_perdido",
+  "respondio",
+  "reunion_agendada",
+  "propuesta_enviada",
+  "negociacion",
+  "cliente",
+  "perdido",
 ];
 
 export const crmLeadSources: ChatbotSource[] = ["web", "whatsapp", "manual"];

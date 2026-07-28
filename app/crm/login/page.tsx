@@ -1,4 +1,4 @@
-import { ShieldCheck } from "lucide-react";
+import Image from "next/image";
 
 import { CrmLoginForm } from "@/components/crm/CrmLoginForm";
 
@@ -16,29 +16,47 @@ export default function CrmLoginPage({
       : "/crm";
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#1b2250_0%,#0d1020_42%,#090b12_100%)] px-4 py-10">
-      <div className="w-full max-w-md">
-        <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.97)_0%,rgba(245,248,255,0.94)_100%)] p-6 shadow-[0_30px_90px_rgba(8,10,18,0.26)] sm:p-8">
-          <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#eef1ff] text-[#4454f5]">
-            <ShieldCheck aria-hidden="true" size={24} />
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
+      <div className="absolute inset-0">
+        <Image
+          alt="Fondo espacial"
+          className="object-cover object-center"
+          fill
+          priority
+          sizes="100vw"
+          src="/crm-login-space-bg.png"
+        />
+      </div>
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,6,18,0.28)_0%,rgba(7,8,20,0.78)_65%,rgba(4,5,14,0.9)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(108,43,255,0.24)_0%,rgba(108,43,255,0.08)_28%,rgba(6,8,20,0)_56%)]" />
+
+      <section className="relative w-full max-w-[25rem] overflow-hidden rounded-[2rem] border border-white/45 bg-[linear-gradient(180deg,rgba(16,10,36,0.82)_0%,rgba(13,10,30,0.74)_100%)] px-6 py-7 text-white shadow-[0_24px_80px_rgba(4,6,20,0.5)] backdrop-blur-[14px] sm:px-7 sm:py-8">
+        <div className="pointer-events-none absolute inset-x-6 top-[9.8rem] h-14 rounded-full bg-[radial-gradient(circle,rgba(124,58,237,0.88)_0%,rgba(111,44,245,0.44)_46%,rgba(111,44,245,0)_100%)] blur-[14px]" />
+        <div className="relative z-10">
+          <div className="flex justify-center">
+            <div className="relative h-16 w-72 sm:h-20 sm:w-80">
+              <Image
+                alt="SolutiogeniZ"
+                className="object-contain"
+                fill
+                priority
+                sizes="(max-width: 640px) 288px, 320px"
+                src="/crm-login-logo.png"
+              />
+            </div>
           </div>
+
           <div className="mt-5 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#4454f5]">
-              SolutiogeniZ
-            </p>
-            <h1 className="mt-3 font-heading text-3xl font-semibold text-ink">
-              Acceso al CRM
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              Ingresá con tus credenciales para continuar.
+            <p className="text-base text-white/78">
+              Ingresa tus credenciales para acceder.
             </p>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-7">
             <CrmLoginForm nextPath={nextPath} />
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
     </main>
   );
 }

@@ -1,21 +1,45 @@
 const SESSION_COOKIE_NAME = "sgz_crm_session";
 const SESSION_DURATION_SECONDS = 60 * 60 * 12;
 
-type CrmSessionPayload = {
+export type CrmRole = "admin" | "vendedor";
+
+export type CrmSessionPayload = {
   username: string;
+  role: CrmRole;
   exp: number;
 };
 
+type CrmIdentity = {
+  username: string;
+  role: CrmRole;
+};
+
+export type CrmRoleCapabilities = {
+  canViewAdminDashboard: boolean;
+  canViewOwnerWorkspace: boolean;
+  canViewUsers: boolean;
+  canCreateManualLeads: boolean;
+  canEditLeadStatus: boolean;
+  canScheduleLeadNextAction: boolean;
+  canCreateLeadActivity: boolean;
+  canCreateLeadTasks: boolean;
+  canUpdateLeadTasks: boolean;
+  canManageOwner: boolean;
+  canManageInternalNotes: boolean;
+  canViewAuditTrail: boolean;
+  canViewExecutiveSummary: boolean;
+};
+
 function getConfig() {
-  const username = process.env.CRM_AUTH_USER?.trim() || "";
-  const password = process.env.CRM_AUTH_PASSWORD?.trim() || "";
   const secret = process.env.CRM_AUTH_SECRET?.trim() || "";
 
-  if (!username || !password || !secret) {
+  if (!secret) {
     return null;
   }
 
-  return { username, password, secret };
+  return {
+    secret,
+  };
 }
 
 function toBase64Url(value: string | Uint8Array) {
@@ -69,17 +93,114 @@ export function getCrmSessionMaxAge() {
   return SESSION_DURATION_SECONDS;
 }
 
-export function isValidCrmCredentials(username: string, password: string) {
-  const config = getConfig();
+export function resolveCrmIdentityFromEnv(
+  username: string,
+  password: string,
+): CrmIdentity | null {
+  const adminUsername = process.env.CRM_AUTH_USER?.trim() || "";
+  const adminPassword = process.env.CRM_AUTH_PASSWORD?.trim() || "";
+  const sellerUsername = process.env.CRM_SELLER_USER?.trim() || "";
+  const sellerPassword = process.env.CRM_SELLER_PASSWORD?.trim() || "";
 
-  if (!config) {
-    return false;
+  if (!adminUsername || !adminPassword) {
+    return null;
   }
 
-  return username === config.username && password === config.password;
+  if (username === adminUsername && password === adminPassword) {
+    return {
+      username,
+      role: "admin",
+    };
+  }
+
+  if (
+    sellerUsername &&
+    sellerPassword &&
+    username === sellerUsername &&
+    password === sellerPassword
+  ) {
+    return {
+      username,
+      role: "vendedor",
+    };
+  }
+
+  return null;
 }
 
-export async function createCrmSessionToken(username: string) {
+export function getDefaultCrmPathForRole(role: CrmRole) {
+  return role === "admin" ? "/crm" : "/crm/leads";
+}
+
+export function getCrmRoleCapabilities(
+  role: CrmRole,
+): CrmRoleCapabilities {
+  if (role === "admin") {
+    return {
+      canViewAdminDashboard: true,
+      canViewOwnerWorkspace: true,
+      canViewUsers: true,
+      canCreateManualLeads: true,
+      canEditLeadStatus: true,
+      canScheduleLeadNextAction: true,
+      canCreateLeadActivity: true,
+      canCreateLeadTasks: true,
+      canUpdateLeadTasks: true,
+      canManageOwner: true,
+      canManageInternalNotes: true,
+      canViewAuditTrail: true,
+      canViewExecutiveSummary: true,
+    };
+  }
+
+  return {
+    canViewAdminDashboard: false,
+    canViewOwnerWorkspace: false,
+    canViewUsers: false,
+    canCreateManualLeads: false,
+    canEditLeadStatus: true,
+    canScheduleLeadNextAction: true,
+    canCreateLeadActivity: true,
+    canCreateLeadTasks: true,
+    canUpdateLeadTasks: true,
+    canManageOwner: false,
+    canManageInternalNotes: false,
+    canViewAuditTrail: false,
+    canViewExecutiveSummary: false,
+  };
+}
+
+export function getCrmAllowedPathPrefixes(role: CrmRole) {
+  if (role === "admin") {
+    return ["/crm", "/api/crm"];
+  }
+
+  return [
+    "/crm/leads",
+    "/crm/conversaciones",
+    "/crm/tareas",
+    "/crm/busqueda",
+    "/api/crm/leads",
+  ];
+}
+
+export function canAccessCrmPath(role: CrmRole, pathname: string) {
+  const allowedPrefixes = getCrmAllowedPathPrefixes(role);
+
+  return allowedPrefixes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+export function resolveCrmSafePathForRole(role: CrmRole, pathname: string) {
+  if (canAccessCrmPath(role, pathname)) {
+    return pathname;
+  }
+
+  return getDefaultCrmPathForRole(role);
+}
+
+export async function createCrmSessionToken(identity: CrmIdentity) {
   const config = getConfig();
 
   if (!config) {
@@ -87,7 +208,8 @@ export async function createCrmSessionToken(username: string) {
   }
 
   const payload: CrmSessionPayload = {
-    username,
+    username: identity.username,
+    role: identity.role,
     exp: Math.floor(Date.now() / 1000) + SESSION_DURATION_SECONDS,
   };
 
@@ -121,7 +243,11 @@ export async function verifyCrmSessionToken(token: string | undefined | null) {
       fromBase64Url(encodedPayload).toString("utf8"),
     ) as CrmSessionPayload;
 
-    if (!payload.username || !payload.exp) {
+    if (!payload.username || !payload.exp || !payload.role) {
+      return null;
+    }
+
+    if (payload.role !== "admin" && payload.role !== "vendedor") {
       return null;
     }
 

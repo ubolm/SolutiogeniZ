@@ -7,7 +7,7 @@ export type WhatsAppIncomingMessage = {
   messageId?: string;
 };
 
-export type WhatsAppProvider = "meta" | "evolution" | "none";
+export type WhatsAppProvider = "meta" | "ycloud" | "evolution" | "none";
 
 type MetaWebhookPayload = {
   entry?: Array<{
@@ -50,6 +50,24 @@ type EvolutionWebhookPayload =
   | EvolutionMessageNode
   | null;
 
+type YCloudWebhookPayload = {
+  id?: string;
+  type?: string;
+  whatsappInboundMessage?: {
+    id?: string;
+    wamid?: string;
+    from?: string;
+    customerProfile?: { name?: string };
+    type?: string;
+    text?: { body?: string };
+    interactive?: {
+      type?: string;
+      button_reply?: { id?: string; title?: string };
+      list_reply?: { id?: string; title?: string; description?: string };
+    };
+  };
+} | null;
+
 function env(name: string) {
   return process.env[name]?.trim() || "";
 }
@@ -60,6 +78,10 @@ function hasMetaConfig() {
       env("WHATSAPP_PHONE_NUMBER_ID") &&
       env("WHATSAPP_VERIFY_TOKEN"),
   );
+}
+
+function hasYCloudConfig() {
+  return Boolean(env("YCLOUD_API_KEY") && env("YCLOUD_WHATSAPP_FROM"));
 }
 
 function hasEvolutionConfig() {
@@ -115,6 +137,10 @@ function isIncomingMessage(
 }
 
 export function getWhatsAppProvider(): WhatsAppProvider {
+  if (hasYCloudConfig()) {
+    return "ycloud";
+  }
+
   if (hasEvolutionConfig()) {
     return "evolution";
   }
@@ -142,6 +168,35 @@ export function verifyWhatsAppSignature(
   rawBody: string,
   signature: string | null,
 ) {
+  if (getWhatsAppProvider() === "ycloud") {
+    const secret = env("YCLOUD_WEBHOOK_SECRET");
+
+    if (!secret || !signature) {
+      return true;
+    }
+
+    const pairs = signature.split(",").map((item) => item.trim());
+    const timestamp = pairs.find((item) => item.startsWith("t="))?.slice(2);
+    const received = pairs.find((item) => item.startsWith("s="))?.slice(2);
+
+    if (!timestamp || !received) {
+      return false;
+    }
+
+    const expected = createHmac("sha256", secret)
+      .update(`${timestamp}.${rawBody}`)
+      .digest("hex");
+
+    try {
+      return timingSafeEqual(
+        Buffer.from(expected, "utf8"),
+        Buffer.from(received, "utf8"),
+      );
+    } catch {
+      return false;
+    }
+  }
+
   if (getWhatsAppProvider() !== "meta") {
     return true;
   }
@@ -192,6 +247,49 @@ export function extractWhatsAppMessages(payload: unknown) {
           .filter((message) => message.from && message.text);
       }),
     );
+  }
+
+  if (provider === "ycloud") {
+    const body = payload as YCloudWebhookPayload;
+
+    if (
+      body?.type !== "whatsapp.inbound_message.received" ||
+      !body.whatsappInboundMessage
+    ) {
+      return [] as WhatsAppIncomingMessage[];
+    }
+
+    const incoming = body.whatsappInboundMessage;
+    const from = normalizeWhatsAppNumber(incoming.from ?? "");
+    const profileName = incoming.customerProfile?.name?.trim();
+    const messageId = incoming.wamid || incoming.id;
+
+    let text = "";
+
+    if (incoming.type === "text") {
+      text = incoming.text?.body?.trim() || "";
+    }
+
+    if (incoming.type === "interactive") {
+      text =
+        incoming.interactive?.button_reply?.title?.trim() ||
+        incoming.interactive?.list_reply?.title?.trim() ||
+        incoming.interactive?.list_reply?.description?.trim() ||
+        "";
+    }
+
+    if (!from || !text) {
+      return [] as WhatsAppIncomingMessage[];
+    }
+
+    return [
+      {
+        from,
+        profileName,
+        text,
+        messageId,
+      } satisfies WhatsAppIncomingMessage,
+    ];
   }
 
   if (provider === "evolution") {
@@ -268,6 +366,41 @@ export async function sendWhatsAppTextMessage({
       const errorBody = await response.text().catch(() => "");
       throw new Error(
         `WhatsApp API rejected the message (${response.status}): ${errorBody}`,
+      );
+    }
+
+    return { delivered: true };
+  }
+
+  if (provider === "ycloud") {
+    const apiKey = env("YCLOUD_API_KEY");
+    const from = env("YCLOUD_WHATSAPP_FROM");
+
+    if (!apiKey || !from) {
+      return { delivered: false };
+    }
+
+    const response = await fetch("https://api.ycloud.com/v2/whatsapp/messages", {
+      method: "POST",
+      headers: {
+        "X-API-Key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: normalizeWhatsAppNumber(to),
+        type: "text",
+        text: {
+          body,
+          preview_url: false,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "");
+      throw new Error(
+        `YCloud API rejected the message (${response.status}): ${errorBody}`,
       );
     }
 

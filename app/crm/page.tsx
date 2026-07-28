@@ -1,25 +1,32 @@
-import Link from "next/link";
-import type { ReactNode } from "react";
 import {
   AlertTriangle,
-  ArrowRight,
-  CalendarClock,
-  CheckCircle2,
-  KanbanSquare,
+  ArrowUpRight,
+  Clock3,
   MessageSquareMore,
   Target,
-  TrendingUp,
-  UserRound,
 } from "lucide-react";
+import Link from "next/link";
 
+import { AdminStatusTable } from "@/components/crm/AdminStatusTable";
 import { CrmPageIntro } from "@/components/crm/CrmPageIntro";
 import { CrmSurfaceCard } from "@/components/crm/CrmSurfaceCard";
-import { TaskInboxBoard } from "@/components/crm/TaskInboxBoard";
 import { getCrmSnapshot } from "@/lib/crm-store";
+import type { CrmLead } from "@/lib/crm-store";
 
 export const dynamic = "force-dynamic";
 
-type AlertTone = "danger" | "warning" | "positive" | "neutral";
+function getDayOffset(value: string) {
+  const now = new Date();
+  const target = new Date(value);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetDay = new Date(
+    target.getFullYear(),
+    target.getMonth(),
+    target.getDate(),
+  );
+
+  return Math.round((targetDay.getTime() - today.getTime()) / 86_400_000);
+}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("es-AR", {
@@ -28,495 +35,519 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function getDaysDifferenceFromToday(value: string) {
-  const now = new Date();
-  const target = new Date(value);
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfTarget = new Date(
-    target.getFullYear(),
-    target.getMonth(),
-    target.getDate(),
-  );
+function hasValidNextAction(value: string) {
+  return Boolean(value) && !Number.isNaN(Date.parse(value));
+}
 
-  return Math.round(
-    (startOfTarget.getTime() - startOfToday.getTime()) / 86_400_000,
+function isLeadOwnerMissing(lead: CrmLead) {
+  return !lead.owner.trim() || lead.owner.trim() === "Sin asignar";
+}
+
+function isLeadContextIncomplete(lead: CrmLead) {
+  return (
+    !lead.customerContext.detectedProblems.trim() ||
+    !lead.customerContext.diagnosedSystems.trim() ||
+    !lead.extendedProfile.opportunityDetected.trim()
   );
 }
 
 export default async function CrmDashboardPage() {
   const snapshot = await getCrmSnapshot();
-  const latestActivities = snapshot.activities.slice(0, 5);
-  const latestConversations = snapshot.conversations.slice(0, 4);
+
   const pendingTasks = snapshot.tasks.filter((task) => task.status === "pendiente");
   const overdueTasks = pendingTasks.filter(
     (task) => new Date(task.dueAt).getTime() < Date.now(),
   );
   const todayTasks = pendingTasks.filter(
-    (task) => getDaysDifferenceFromToday(task.dueAt) === 0,
+    (task) => getDayOffset(task.dueAt) === 0,
   );
-  const proposalLeads = snapshot.leads.filter((lead) => lead.status === "propuesta");
+  const proposalLeads = snapshot.leads.filter(
+    (lead) => lead.status === "propuesta_enviada",
+  );
   const followupLeads = snapshot.leads.filter(
-    (lead) => lead.status === "seguimiento",
+    (lead) => lead.status === "negociacion",
   );
-  const wonLeads = snapshot.leads.filter(
-    (lead) => lead.status === "cerrado_ganado",
+  const activeLeads = snapshot.leads.filter(
+    (lead) => lead.status !== "cliente" && lead.status !== "perdido",
   );
-  const unattendedLeads = snapshot.leads.filter(
-    (lead) => lead.status === "nuevo" || lead.status === "contactado",
+  const overdueLeadActions = activeLeads.filter(
+    (lead) => getDayOffset(lead.nextActionAt) < 0,
   );
-
-  const urgentLeads = [...snapshot.leads]
+  const todayLeadActions = activeLeads.filter(
+    (lead) => getDayOffset(lead.nextActionAt) === 0,
+  );
+  const upcomingLeadActions = activeLeads
+    .filter((lead) => {
+      const offset = getDayOffset(lead.nextActionAt);
+      return offset > 0 && offset <= 3;
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.nextActionAt).getTime() - new Date(b.nextActionAt).getTime(),
+    );
+  const recentConversations = snapshot.conversations.slice(0, 3);
+  const recentTasks = pendingTasks
+    .sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime())
+    .slice(0, 4);
+  const urgentLeadList = [...overdueLeadActions, ...todayLeadActions]
     .sort(
       (a, b) =>
         new Date(a.nextActionAt).getTime() - new Date(b.nextActionAt).getTime(),
     )
-    .slice(0, 4);
-
-  const focusItems = [
-    {
-      label: "Retomar propuestas",
-      value: proposalLeads.length.toString(),
-      description:
-        proposalLeads.length > 0
-          ? "Hay oportunidades en propuesta para empujar hacia cierre."
-          : "No hay propuestas activas en este momento.",
-      href: "/crm/leads",
-      icon: <TrendingUp aria-hidden="true" size={18} />,
-      tone: "blue" as const,
-    },
-    {
-      label: "Resolver atrasos",
-      value: overdueTasks.length.toString(),
-      description:
-        overdueTasks.length > 0
-          ? "Conviene limpiar tareas vencidas para no perder seguimiento."
-          : "No hay tareas atrasadas, buen ritmo operativo.",
-      href: "/crm/tareas",
-      icon: <AlertTriangle aria-hidden="true" size={18} />,
-      tone: "red" as const,
-    },
-    {
-      label: "Mover seguimiento",
-      value: followupLeads.length.toString(),
-      description:
-        followupLeads.length > 0
-          ? "Leads en seguimiento que necesitan una accion concreta."
-          : "No hay leads trabados en seguimiento ahora.",
-      href: "/crm/mi-trabajo",
-      icon: <Target aria-hidden="true" size={18} />,
-      tone: "amber" as const,
-    },
-  ];
-
-  const alertItems: Array<{
-    label: string;
-    value: number;
-    description: string;
-    href: string;
-    tone: AlertTone;
-  }> = [
-    {
-      label: "Tareas vencidas",
-      value: overdueTasks.length,
-      description:
-        overdueTasks.length > 0
-          ? "Prioridad alta para hoy."
-          : "Sin atrasos operativos.",
-      href: "/crm/tareas",
-      tone: overdueTasks.length > 0 ? "danger" : "positive",
-    },
-    {
-      label: "Pendientes para hoy",
-      value: todayTasks.length,
-      description: "Seguimientos que conviene ejecutar hoy mismo.",
-      href: "/crm/tareas",
-      tone: todayTasks.length > 0 ? "warning" : "neutral",
-    },
-    {
-      label: "Leads sin cerrar",
-      value: unattendedLeads.length,
-      description: "Nuevos o contactados que todavia no avanzaron.",
-      href: "/crm/leads",
-      tone: unattendedLeads.length > 0 ? "warning" : "neutral",
-    },
-  ];
+    .slice(0, 5);
+  const leadsWithoutOwner = activeLeads.filter(isLeadOwnerMissing);
+  const leadsWithoutNextAction = activeLeads.filter(
+    (lead) => !hasValidNextAction(lead.nextActionAt),
+  );
+  const leadsWithIncompleteContext = activeLeads.filter(isLeadContextIncomplete);
+  const hygieneLeadList = [
+    ...leadsWithoutOwner.map((lead) => ({
+      lead,
+      label: "Sin responsable",
+      tone: "danger" as const,
+      detail: "Asigna un responsable para que alguien tome esta oportunidad.",
+    })),
+    ...leadsWithoutNextAction.map((lead) => ({
+      lead,
+      label: "Sin proxima accion",
+      tone: "warning" as const,
+      detail: "Define un seguimiento concreto para que no se enfrie.",
+    })),
+    ...leadsWithIncompleteContext.map((lead) => ({
+      lead,
+      label: "Contexto incompleto",
+      tone: "neutral" as const,
+      detail: "Faltan problemas, sistemas u oportunidad detectada.",
+    })),
+  ]
+    .filter(
+      (item, index, array) =>
+        array.findIndex((candidate) => candidate.lead.id === item.lead.id) === index,
+    )
+    .slice(0, 6);
 
   return (
-    <div className="grid gap-8">
+    <div className="grid gap-7">
       <CrmPageIntro
-        description="Una vista ejecutiva para entrar al CRM y detectar rapido donde conviene actuar primero: oportunidades, tareas criticas y conversaciones que necesitan continuidad."
-        eyebrow="Dashboard CRM"
+        eyebrow="Dashboard"
+        title="Centro comercial"
+        description="Una entrada corta para detectar que mover hoy y a donde conviene entrar primero."
         stats={[
-          {
-            label: "Leads activos",
-            value: snapshot.leads.length.toString(),
-          },
-          {
-            label: "Ganados",
-            value: wonLeads.length.toString(),
-          },
+          { label: "Leads activos", value: snapshot.leads.length.toString() },
+          { label: "Tareas hoy", value: todayTasks.length.toString() },
+          { label: "Propuestas enviadas", value: proposalLeads.length.toString() },
           {
             label: "Conversaciones",
             value: snapshot.conversations.length.toString(),
           },
-          {
-            label: "Tareas pendientes",
-            value: pendingTasks.length.toString(),
-          },
         ]}
-        title="Centro operativo de SolutiogeniZ"
       />
 
-      <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <section className="overflow-hidden rounded-[2rem] border border-[#dfe5fb] bg-[linear-gradient(135deg,#10162f_0%,#1e2753_45%,#4454f5_100%)] p-6 text-white shadow-[0_30px_90px_rgba(16,22,47,0.24)] md:p-7">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/66">
-                Foco del dia
-              </p>
-              <h2 className="font-heading mt-3 text-3xl font-semibold">
-                Prioridades comerciales para entrar en accion
-              </h2>
-              <p className="mt-3 text-sm leading-7 text-white/80">
-                Hoy conviene revisar propuestas abiertas, limpiar atrasos y mover los seguimientos con una accion concreta.
-              </p>
-            </div>
-            <div className="rounded-[1.6rem] border border-white/12 bg-white/10 px-4 py-4 backdrop-blur">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/60">
-                Ritmo operativo
-              </p>
-              <p className="mt-2 font-heading text-3xl font-semibold">
-                {pendingTasks.length}
-              </p>
-              <p className="mt-1 text-sm text-white/74">pendientes abiertos</p>
-            </div>
+      <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+        <CrmSurfaceCard
+          description="Tres alertas simples para entrar en accion sin ruido."
+          title="Hoy importa"
+        >
+          <div className="grid gap-3 md:grid-cols-3">
+            <PriorityStat
+              detail={
+                overdueTasks.length > 0
+                  ? "Conviene resolverlas primero."
+                  : "No hay atrasos visibles."
+              }
+              icon={<AlertTriangle aria-hidden="true" size={16} />}
+              label="Tareas vencidas"
+              tone="danger"
+              value={overdueTasks.length.toString()}
+            />
+            <PriorityStat
+              detail={
+                todayTasks.length > 0
+                  ? "Seguimientos a ejecutar hoy."
+                  : "No hay agenda urgente para hoy."
+              }
+              icon={<Clock3 aria-hidden="true" size={16} />}
+              label="Pendientes hoy"
+              tone="warning"
+              value={todayTasks.length.toString()}
+            />
+            <PriorityStat
+              detail={
+                overdueLeadActions.length > 0
+                  ? "Leads con seguimiento vencido."
+                  : "No hay seguimientos vencidos."
+              }
+              icon={<Target aria-hidden="true" size={16} />}
+              label="Leads vencidos"
+              tone="neutral"
+              value={overdueLeadActions.length.toString()}
+            />
           </div>
-
-          <div className="mt-6 grid gap-3 md:grid-cols-3">
-            {focusItems.map((item) => (
-              <FocusCard
-                description={item.description}
-                href={item.href}
-                icon={item.icon}
-                key={item.label}
-                label={item.label}
-                tone={item.tone}
-                value={item.value}
-              />
-            ))}
-          </div>
-        </section>
+        </CrmSurfaceCard>
 
         <CrmSurfaceCard
-          description="Lectura corta de lo que mas necesita atencion en este momento."
-          title="Alertas y salud"
+          action={
+            <Link
+              className="inline-flex items-center gap-1 text-sm font-semibold text-primary-strong transition hover:opacity-80"
+              href="/crm/tareas"
+            >
+              Abrir tareas
+              <ArrowUpRight aria-hidden="true" size={15} />
+            </Link>
+          }
+          description="Los proximos pendientes para no perder continuidad."
+          title="Agenda inmediata"
         >
-          <div className="mt-5 grid gap-3">
-            {alertItems.map((item) => (
-              <AlertRow
-                description={item.description}
-                href={item.href}
-                key={item.label}
-                label={item.label}
-                tone={item.tone}
-                value={item.value}
-              />
-            ))}
+          <div className="grid gap-2.5">
+            {recentTasks.length === 0 ? (
+              <EmptyMiniState text="No hay tareas pendientes en este momento." />
+            ) : (
+              recentTasks.map((task) => (
+                <MiniListItem
+                  key={task.id}
+                  meta={formatDate(task.dueAt)}
+                  title={task.title}
+                />
+              ))
+            )}
           </div>
         </CrmSurfaceCard>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-4">
-        <ModuleCard
-          cta="Abrir leads"
-          description="Pipeline comercial, movimiento por etapas y fichas individuales."
-          href="/crm/leads"
-          icon={<KanbanSquare aria-hidden="true" size={18} />}
-          title="Leads"
-        />
-        <ModuleCard
-          cta="Abrir tareas"
-          description="Bandeja operativa con atrasos, hoy y proximos seguimientos."
-          href="/crm/tareas"
-          icon={<CalendarClock aria-hidden="true" size={18} />}
-          title="Tareas"
-        />
-        <ModuleCard
-          cta="Abrir conversaciones"
-          description="Contexto reciente por web y WhatsApp para responder mejor."
-          href="/crm/conversaciones"
-          icon={<MessageSquareMore aria-hidden="true" size={18} />}
-          title="Conversaciones"
-        />
-        <ModuleCard
-          cta="Abrir mi trabajo"
-          description="Vista por responsable para concentrarte en lo que te toca seguir."
-          href="/crm/mi-trabajo"
-          icon={<UserRound aria-hidden="true" size={18} />}
-          title="Mi trabajo"
-        />
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+      <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
         <CrmSurfaceCard
-          description="Leads que piden una accion cercana o ya vencida."
-          title="Prioridades inmediatas"
+          action={
+            <Link
+              className="inline-flex items-center gap-1 text-sm font-semibold text-primary-strong transition hover:opacity-80"
+              href="/crm/leads"
+            >
+              Abrir leads
+              <ArrowUpRight aria-hidden="true" size={15} />
+            </Link>
+          }
+          description="Leads que conviene retomar primero para no perder continuidad comercial."
+          title="Seguimientos criticos"
         >
-          <div className="mt-5 grid gap-3">
-            {urgentLeads.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-line bg-paper px-4 py-5 text-sm text-muted">
-                Todavia no hay leads con proxima accion definida.
-              </p>
+          <div className="grid gap-2.5">
+            {urgentLeadList.length === 0 ? (
+              <EmptyMiniState text="No hay leads urgentes por retomar en este momento." />
             ) : (
-              urgentLeads.map((lead) => {
-                const days = getDaysDifferenceFromToday(lead.nextActionAt);
-
-                return (
-                  <article
-                    className="rounded-[1.6rem] border border-[#e8ecf6] bg-[linear-gradient(180deg,#fbfcff_0%,#f6f8fc_100%)] px-4 py-4 shadow-[0_10px_28px_rgba(15,19,36,0.05)]"
-                    key={lead.id}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-ink">{lead.company}</p>
-                        <p className="mt-1 text-xs text-muted">
-                          {lead.name} • {lead.owner || "Sin asignar"}
-                        </p>
-                      </div>
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${
-                          days < 0
-                            ? "bg-[#ffe0e0] text-[#b42318]"
-                            : days === 0
-                              ? "bg-[#dce8ff] text-[#2f5bea]"
-                              : "bg-[#e4f4d8] text-[#267a2b]"
-                        }`}
-                      >
-                        {days < 0 ? "Vencida" : days === 0 ? "Hoy" : `En ${days} dias`}
-                      </span>
-                    </div>
-                    <p className="mt-3 text-sm leading-6 text-muted">{lead.summary}</p>
-                    <div className="mt-4 flex items-center justify-between gap-3">
-                      <p className="text-xs text-muted">
-                        Proxima accion: {formatDate(lead.nextActionAt)}
-                      </p>
-                      <Link
-                        className="inline-flex items-center gap-2 rounded-full bg-[#10162f] px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5"
-                        href={`/crm/leads/${lead.id}`}
-                      >
-                        Abrir
-                        <ArrowRight aria-hidden="true" size={12} />
-                      </Link>
-                    </div>
-                  </article>
-                );
-              })
+              urgentLeadList.map((lead) => (
+                <LeadActionItem
+                  company={lead.company}
+                  href={`/crm/leads/${lead.id}`}
+                  key={lead.id}
+                  meta={`${formatDate(lead.nextActionAt)} · ${lead.owner || "Sin asignar"}`}
+                  note={lead.summary}
+                  tone={getDayOffset(lead.nextActionAt) < 0 ? "danger" : "warning"}
+                />
+              ))
             )}
           </div>
         </CrmSurfaceCard>
 
         <CrmSurfaceCard
-          description="Lo ultimo que se movio en actividad y conversaciones para entrar rapido con contexto."
-          title="Pulso reciente"
+          action={
+            <Link
+              className="inline-flex items-center gap-1 text-sm font-semibold text-primary-strong transition hover:opacity-80"
+              href="/crm/conversaciones"
+            >
+              Abrir conversaciones
+              <ArrowUpRight aria-hidden="true" size={15} />
+            </Link>
+          }
+          description="Contexto reciente para revisar antes de responder."
+          title="Conversaciones recientes"
         >
-          <div className="mt-5 grid gap-6 lg:grid-cols-2">
-            <div className="grid gap-3">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-semibold text-ink">Actividad reciente</h3>
-                <span className="text-[11px] uppercase tracking-[0.12em] text-muted">
-                  {latestActivities.length} items
-                </span>
-              </div>
-              {latestActivities.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-line bg-paper px-4 py-5 text-sm text-muted">
-                  Aun no hay actividad registrada.
-                </p>
-              ) : (
-                latestActivities.map((activity) => (
-                  <article
-                    className="rounded-2xl bg-paper px-4 py-4"
-                    key={activity.id}
-                  >
-                    <p className="text-sm font-semibold text-ink">
-                      {activity.description}
-                    </p>
-                    <p className="mt-2 text-xs text-muted">
-                      {formatDate(activity.createdAt)}
-                    </p>
-                  </article>
-                ))
-              )}
-            </div>
-
-            <div className="grid gap-3">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-semibold text-ink">
-                  Conversaciones recientes
-                </h3>
-                <span className="text-[11px] uppercase tracking-[0.12em] text-muted">
-                  {latestConversations.length} items
-                </span>
-              </div>
-              {latestConversations.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-line bg-paper px-4 py-5 text-sm text-muted">
-                  Aun no hay conversaciones registradas.
-                </p>
-              ) : (
-                latestConversations.map((conversation) => (
-                  <article
-                    className="rounded-2xl bg-paper px-4 py-4"
-                    key={conversation.id}
-                  >
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-strong">
-                      {conversation.channel} •{" "}
-                      {conversation.detectedIntent.replaceAll("_", " ")}
-                    </p>
-                    <p className="mt-2 line-clamp-4 text-sm leading-6 text-ink">
-                      {conversation.transcriptSummary}
-                    </p>
-                    <p className="mt-2 text-xs text-muted">
-                      {formatDate(conversation.lastMessageAt)}
-                    </p>
-                  </article>
-                ))
-              )}
-            </div>
+          <div className="grid gap-2.5">
+            {recentConversations.length === 0 ? (
+              <EmptyMiniState text="Todavia no hay conversaciones registradas." />
+            ) : (
+              recentConversations.map((conversation) => (
+                <MiniConversationItem
+                  key={conversation.id}
+                  summary={conversation.transcriptSummary}
+                  title={`${conversation.channel} · ${conversation.detectedIntent.replaceAll("_", " ")}`}
+                />
+              ))
+            )}
           </div>
+        </CrmSurfaceCard>
+
+        <CrmSurfaceCard
+          description="Control interno integrado al dashboard para revisar estados rapido."
+          title="Control rapido"
+        >
+          <AdminStatusTable />
         </CrmSurfaceCard>
       </section>
 
-      <TaskInboxBoard leads={snapshot.leads} tasks={snapshot.tasks} />
+      <CrmSurfaceCard
+        action={
+          <Link
+            className="inline-flex items-center gap-1 text-sm font-semibold text-primary-strong transition hover:opacity-80"
+            href="/crm/leads"
+          >
+            Ver pipeline
+            <ArrowUpRight aria-hidden="true" size={15} />
+          </Link>
+        }
+        description="Proximas acciones comerciales dentro de los siguientes tres dias."
+        title="Ventana proxima"
+      >
+        <div className="grid gap-3 md:grid-cols-3">
+          <PriorityStat
+            detail={
+              todayLeadActions.length > 0
+                ? "Leads que deberian tocarse hoy."
+                : "No hay acciones de lead para hoy."
+            }
+            icon={<Clock3 aria-hidden="true" size={16} />}
+            label="Leads hoy"
+            tone="warning"
+            value={todayLeadActions.length.toString()}
+          />
+          <PriorityStat
+            detail={
+              upcomingLeadActions.length > 0
+                ? "Seguimientos que vencen pronto."
+                : "No hay acciones cercanas cargadas."
+            }
+            icon={<Target aria-hidden="true" size={16} />}
+            label="Proximos 3 dias"
+            tone="neutral"
+            value={upcomingLeadActions.length.toString()}
+          />
+          <PriorityStat
+            detail={
+              followupLeads.length > 0
+                ? "Oportunidades en negociacion activas."
+                : "No hay negociaciones activas ahora."
+            }
+            icon={<MessageSquareMore aria-hidden="true" size={16} />}
+            label="En negociacion"
+            tone="neutral"
+            value={followupLeads.length.toString()}
+          />
+        </div>
+      </CrmSurfaceCard>
+
+      <section className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+        <CrmSurfaceCard
+          description="Lectura interna para que ninguna oportunidad quede floja por falta de datos o seguimiento."
+          title="Higiene comercial"
+        >
+          <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
+            <PriorityStat
+              detail={
+                leadsWithoutOwner.length > 0
+                  ? "Leads que todavia no tienen vendedor asignado."
+                  : "Todos los leads activos ya tienen responsable."
+              }
+              icon={<AlertTriangle aria-hidden="true" size={16} />}
+              label="Sin responsable"
+              tone="danger"
+              value={leadsWithoutOwner.length.toString()}
+            />
+            <PriorityStat
+              detail={
+                leadsWithoutNextAction.length > 0
+                  ? "Leads sin seguimiento agendado."
+                  : "Todos tienen proxima accion cargada."
+              }
+              icon={<Clock3 aria-hidden="true" size={16} />}
+              label="Sin proxima accion"
+              tone="warning"
+              value={leadsWithoutNextAction.length.toString()}
+            />
+            <PriorityStat
+              detail={
+                leadsWithIncompleteContext.length > 0
+                  ? "Leads con contexto comercial incompleto."
+                  : "El contexto base esta completo en los leads activos."
+              }
+              icon={<Target aria-hidden="true" size={16} />}
+              label="Contexto incompleto"
+              tone="neutral"
+              value={leadsWithIncompleteContext.length.toString()}
+            />
+          </div>
+        </CrmSurfaceCard>
+
+        <CrmSurfaceCard
+          action={
+            <Link
+              className="inline-flex items-center gap-1 text-sm font-semibold text-primary-strong transition hover:opacity-80"
+              href="/crm/leads"
+            >
+              Resolver en leads
+              <ArrowUpRight aria-hidden="true" size={15} />
+            </Link>
+          }
+          description="Casos donde conviene entrar a completar datos o dejar el seguimiento mejor ordenado."
+          title="Pendientes de orden"
+        >
+          <div className="grid gap-2.5">
+            {hygieneLeadList.length === 0 ? (
+              <EmptyMiniState text="No hay leads activos con huecos operativos visibles en este momento." />
+            ) : (
+              hygieneLeadList.map((item) => (
+                <HygieneLeadItem
+                  company={item.lead.company}
+                  detail={item.detail}
+                  href={`/crm/leads/${item.lead.id}`}
+                  key={`${item.label}-${item.lead.id}`}
+                  meta={`${item.label} · ${item.lead.owner || "Sin asignar"}`}
+                  tone={item.tone}
+                />
+              ))
+            )}
+          </div>
+        </CrmSurfaceCard>
+      </section>
     </div>
   );
 }
 
-function FocusCard({
+function PriorityStat({
   icon,
   label,
   value,
-  description,
-  href,
+  detail,
   tone,
 }: {
-  icon: ReactNode;
+  icon: React.ReactNode;
   label: string;
   value: string;
-  description: string;
-  href: string;
-  tone: "blue" | "red" | "amber";
+  detail: string;
+  tone: "danger" | "warning" | "neutral";
 }) {
   const toneClass =
-    tone === "red"
-      ? "border-white/12 bg-white/10"
-      : tone === "amber"
-        ? "border-white/12 bg-white/10"
-        : "border-white/12 bg-white/10";
+    tone === "danger"
+      ? "border-[#ffd8d8] bg-[linear-gradient(180deg,rgba(255,245,245,0.86)_0%,rgba(255,237,237,0.78)_100%)] text-[#b42318]"
+      : tone === "warning"
+        ? "border-[#ffe7bd] bg-[linear-gradient(180deg,rgba(255,248,236,0.86)_0%,rgba(255,242,221,0.78)_100%)] text-[#b56a06]"
+        : "border-[#dde5ff] bg-[linear-gradient(180deg,rgba(243,246,255,0.86)_0%,rgba(234,239,255,0.78)_100%)] text-[#2f5bea]";
 
   return (
-    <article className={`rounded-[1.5rem] border p-4 backdrop-blur ${toneClass}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="inline-flex rounded-full bg-white/14 p-3 text-white">
-          {icon}
-        </div>
-        <p className="font-heading text-3xl font-semibold">{value}</p>
+    <article className={`rounded-[1.45rem] border px-4 py-4 backdrop-blur-[10px] ${toneClass}`}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="inline-flex rounded-full bg-white/80 p-2">{icon}</div>
+        <p className="font-heading text-[2.1rem] font-semibold">{value}</p>
       </div>
-      <p className="mt-4 text-sm font-semibold text-white">{label}</p>
-      <p className="mt-2 text-sm leading-6 text-white/74">{description}</p>
-      <Link
-        className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-white transition hover:text-white/80"
-        href={href}
-      >
-        Ver modulo
-        <ArrowRight aria-hidden="true" size={14} />
-      </Link>
+      <p className="mt-3 text-[0.98rem] font-semibold">{label}</p>
+      <p className="mt-1.5 text-[0.88rem] leading-6 opacity-80">{detail}</p>
     </article>
   );
 }
 
-function AlertRow({
-  label,
-  value,
-  description,
+function MiniListItem({
+  title,
+  meta,
+}: {
+  title: string;
+  meta: string;
+}) {
+  return (
+    <article className="rounded-[1.3rem] border border-white/70 bg-white/55 px-4 py-3.5 backdrop-blur-[10px]">
+      <p className="text-[0.98rem] font-semibold text-ink">{title}</p>
+      <p className="mt-1.5 text-[0.84rem] text-muted">{meta}</p>
+    </article>
+  );
+}
+
+function MiniConversationItem({
+  title,
+  summary,
+}: {
+  title: string;
+  summary: string;
+}) {
+  return (
+    <article className="rounded-[1.3rem] border border-white/70 bg-white/55 px-4 py-3.5 backdrop-blur-[10px]">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 inline-flex rounded-full bg-[#eef2ff] p-2 text-primary-strong">
+          <MessageSquareMore aria-hidden="true" size={14} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[0.98rem] font-semibold capitalize text-ink">{title}</p>
+          <p className="mt-1.5 line-clamp-2 text-[0.84rem] leading-6 text-muted">
+            {summary}
+          </p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function LeadActionItem({
+  company,
+  meta,
+  note,
   href,
   tone,
 }: {
-  label: string;
-  value: number;
-  description: string;
+  company: string;
+  meta: string;
+  note: string;
   href: string;
-  tone: AlertTone;
+  tone: "danger" | "warning";
 }) {
   const toneClass =
     tone === "danger"
-      ? "border-[#ffd6d6] bg-[#fff4f4]"
-      : tone === "warning"
-        ? "border-[#ffe4b5] bg-[#fff8ec]"
-        : tone === "positive"
-          ? "border-[#d9ebd0] bg-[#f4fbef]"
-          : "border-[#e7ebf6] bg-[#f8f9fc]";
-
-  const valueClass =
-    tone === "danger"
-      ? "text-[#b42318]"
-      : tone === "warning"
-        ? "text-[#b56a06]"
-        : tone === "positive"
-          ? "text-[#267a2b]"
-          : "text-ink";
+      ? "border-[#ffd8d8] bg-[linear-gradient(180deg,rgba(255,245,245,0.86)_0%,rgba(255,237,237,0.78)_100%)]"
+      : "border-[#ffe7bd] bg-[linear-gradient(180deg,rgba(255,248,236,0.86)_0%,rgba(255,242,221,0.78)_100%)]";
 
   return (
-    <article className={`rounded-[1.4rem] border px-4 py-4 ${toneClass}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
-            {label}
-          </p>
-          <p className={`mt-2 font-heading text-3xl font-semibold ${valueClass}`}>
-            {value}
-          </p>
-        </div>
-        <Link
-          className="inline-flex items-center gap-1 text-xs font-semibold text-primary-strong transition hover:opacity-80"
-          href={href}
-        >
-          Abrir
-          <ArrowRight aria-hidden="true" size={12} />
-        </Link>
-      </div>
-      <p className="mt-2 text-sm leading-6 text-muted">{description}</p>
-    </article>
+    <Link
+      className={`block rounded-[1.3rem] border px-4 py-3.5 backdrop-blur-[10px] transition hover:-translate-y-0.5 ${toneClass}`}
+      href={href}
+    >
+      <p className="text-[0.98rem] font-semibold text-ink">{company}</p>
+      <p className="mt-1.5 text-[0.84rem] text-muted">{meta}</p>
+      <p className="mt-2 line-clamp-2 text-[0.84rem] leading-6 text-ink/80">
+        {note}
+      </p>
+    </Link>
   );
 }
 
-function ModuleCard({
-  icon,
-  title,
-  description,
+function HygieneLeadItem({
+  company,
+  meta,
+  detail,
   href,
-  cta,
+  tone,
 }: {
-  icon: ReactNode;
-  title: string;
-  description: string;
+  company: string;
+  meta: string;
+  detail: string;
   href: string;
-  cta: string;
+  tone: "danger" | "warning" | "neutral";
 }) {
+  const toneClass =
+    tone === "danger"
+      ? "border-[#ffd8d8] bg-[linear-gradient(180deg,rgba(255,245,245,0.86)_0%,rgba(255,237,237,0.78)_100%)]"
+      : tone === "warning"
+        ? "border-[#ffe7bd] bg-[linear-gradient(180deg,rgba(255,248,236,0.86)_0%,rgba(255,242,221,0.78)_100%)]"
+        : "border-[#dde5ff] bg-[linear-gradient(180deg,rgba(243,246,255,0.86)_0%,rgba(234,239,255,0.78)_100%)]";
+
   return (
-    <article className="rounded-[1.8rem] border border-line bg-white p-5 shadow-soft">
-      <div className="inline-flex rounded-full bg-[#eef1ff] p-3 text-primary-strong">
-        {icon}
-      </div>
-      <h2 className="font-heading mt-4 text-2xl font-semibold text-ink">
-        {title}
-      </h2>
-      <p className="mt-2 text-sm leading-6 text-muted">{description}</p>
-      <Link
-        className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-primary-strong transition hover:opacity-80"
-        href={href}
-      >
-        {cta}
-        <ArrowRight aria-hidden="true" size={14} />
-      </Link>
-    </article>
+    <Link
+      className={`block rounded-[1.3rem] border px-4 py-3.5 backdrop-blur-[10px] transition hover:-translate-y-0.5 ${toneClass}`}
+      href={href}
+    >
+      <p className="text-[0.98rem] font-semibold text-ink">{company}</p>
+      <p className="mt-1.5 text-[0.84rem] text-muted">{meta}</p>
+      <p className="mt-2 text-[0.84rem] leading-6 text-ink/80">{detail}</p>
+    </Link>
+  );
+}
+
+function EmptyMiniState({ text }: { text: string }) {
+  return (
+    <div className="rounded-[1.3rem] border border-dashed border-white/70 bg-white/45 px-4 py-5 text-[0.95rem] text-muted backdrop-blur-[8px]">
+      {text}
+    </div>
   );
 }

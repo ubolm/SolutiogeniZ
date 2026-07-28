@@ -14,7 +14,7 @@ import {
 export async function GET(request: Request) {
   const provider = getWhatsAppProvider();
 
-  if (provider === "evolution") {
+  if (provider === "evolution" || provider === "ycloud") {
     return NextResponse.json({ ok: true, provider });
   }
 

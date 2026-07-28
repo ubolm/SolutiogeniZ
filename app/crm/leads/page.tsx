@@ -1,13 +1,30 @@
+import { cookies } from "next/headers";
+
 import { CrmPageIntro } from "@/components/crm/CrmPageIntro";
 import { CrmSurfaceCard } from "@/components/crm/CrmSurfaceCard";
+import { LeadCsvImportCard } from "@/components/crm/LeadCsvImportCard";
 import { LeadPipelineManager } from "@/components/crm/LeadPipelineManager";
 import { ManualLeadForm } from "@/components/crm/ManualLeadForm";
-import { getCrmSnapshot } from "@/lib/crm-store";
+import {
+  getCrmRoleCapabilities,
+  getCrmSessionCookieName,
+  verifyCrmSessionToken,
+} from "@/lib/crm-auth";
+import { getCrmSnapshot, scopeCrmSnapshotToSession } from "@/lib/crm-store";
+import { getAssignableCrmUsers } from "@/lib/crm-users";
 
 export const dynamic = "force-dynamic";
 
 export default async function CrmLeadsPage() {
-  const snapshot = await getCrmSnapshot();
+  const cookieStore = await cookies();
+  const token = cookieStore.get(getCrmSessionCookieName())?.value;
+  const session = await verifyCrmSessionToken(token);
+  const role = session?.role ?? "vendedor";
+  const capabilities = getCrmRoleCapabilities(role);
+  const snapshot = scopeCrmSnapshotToSession(await getCrmSnapshot(), session);
+  const ownerUsers = capabilities.canCreateManualLeads
+    ? await getAssignableCrmUsers()
+    : [];
 
   return (
     <div className="grid gap-8">
@@ -20,21 +37,21 @@ export default async function CrmLeadsPage() {
             value: snapshot.leads.length.toString(),
           },
           {
-            label: "Nuevos",
+            label: "Respondieron",
             value: snapshot.leads
-              .filter((lead) => lead.status === "nuevo")
+              .filter((lead) => lead.status === "respondio")
               .length.toString(),
           },
           {
-            label: "En propuesta",
+            label: "Propuesta enviada",
             value: snapshot.leads
-              .filter((lead) => lead.status === "propuesta")
+              .filter((lead) => lead.status === "propuesta_enviada")
               .length.toString(),
           },
           {
-            label: "Ganados",
+            label: "Clientes",
             value: snapshot.leads
-              .filter((lead) => lead.status === "cerrado_ganado")
+              .filter((lead) => lead.status === "cliente")
               .length.toString(),
           },
         ]}
@@ -51,12 +68,19 @@ export default async function CrmLeadsPage() {
               activities={snapshot.activities}
               conversations={snapshot.conversations}
               leads={snapshot.leads}
+              ownerOptions={ownerUsers.map((user) => user.username)}
+              role={role}
             />
           </div>
         </CrmSurfaceCard>
 
         <div className="grid gap-6">
-          <ManualLeadForm />
+          {capabilities.canCreateManualLeads ? (
+            <>
+              <ManualLeadForm ownerOptions={ownerUsers.map((user) => user.username)} />
+              <LeadCsvImportCard />
+            </>
+          ) : null}
 
           <CrmSurfaceCard
             description="Una lectura corta del estado comercial actual."
@@ -65,20 +89,20 @@ export default async function CrmLeadsPage() {
           >
             <div className="mt-5 grid gap-3">
               <QuickStat
-                label="Leads nuevos"
-                value={snapshot.leads.filter((lead) => lead.status === "nuevo").length.toString()}
+                label="Contactados"
+                value={snapshot.leads.filter((lead) => lead.status === "contactado").length.toString()}
               />
               <QuickStat
-                label="En propuesta"
-                value={snapshot.leads.filter((lead) => lead.status === "propuesta").length.toString()}
+                label="Reunion agendada"
+                value={snapshot.leads.filter((lead) => lead.status === "reunion_agendada").length.toString()}
               />
               <QuickStat
-                label="En seguimiento"
-                value={snapshot.leads.filter((lead) => lead.status === "seguimiento").length.toString()}
+                label="En negociacion"
+                value={snapshot.leads.filter((lead) => lead.status === "negociacion").length.toString()}
               />
               <QuickStat
-                label="Ganados"
-                value={snapshot.leads.filter((lead) => lead.status === "cerrado_ganado").length.toString()}
+                label="Clientes"
+                value={snapshot.leads.filter((lead) => lead.status === "cliente").length.toString()}
               />
             </div>
           </CrmSurfaceCard>

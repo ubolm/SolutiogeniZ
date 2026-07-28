@@ -74,19 +74,22 @@ section[id] {
     min-height: 3rem;
     width: 100%;
     border-radius: 1rem;
-    border: 1px solid #e5e7eb;
-    background: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    background: rgba(255, 255, 255, 0.66);
+    backdrop-filter: blur(10px);
     padding: 0.75rem 0.9rem;
     color: #0b0b0f;
     outline: none;
     transition:
       border-color 160ms ease,
+      background-color 160ms ease,
       box-shadow 160ms ease;
   }
 
   .field:focus {
     border-color: #5b6cff;
-    box-shadow: 0 0 0 4px rgba(91, 108, 255, 0.22);
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 0 4px rgba(91, 108, 255, 0.18);
   }
 
   .field[aria-invalid="true"] {

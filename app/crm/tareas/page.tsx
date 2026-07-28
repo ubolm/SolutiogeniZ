@@ -1,11 +1,21 @@
+import { cookies } from "next/headers";
+
 import { CrmPageIntro } from "@/components/crm/CrmPageIntro";
 import { TaskInboxBoard } from "@/components/crm/TaskInboxBoard";
-import { getCrmSnapshot } from "@/lib/crm-store";
+import {
+  getCrmSessionCookieName,
+  verifyCrmSessionToken,
+} from "@/lib/crm-auth";
+import { getCrmSnapshot, scopeCrmSnapshotToSession } from "@/lib/crm-store";
 
 export const dynamic = "force-dynamic";
 
 export default async function CrmTasksPage() {
-  const snapshot = await getCrmSnapshot();
+  const cookieStore = await cookies();
+  const token = cookieStore.get(getCrmSessionCookieName())?.value;
+  const session = await verifyCrmSessionToken(token);
+  const role = session?.role ?? "vendedor";
+  const snapshot = scopeCrmSnapshotToSession(await getCrmSnapshot(), session);
   const pendingTasks = snapshot.tasks.filter((task) => task.status === "pendiente");
   const overdueTasks = pendingTasks.filter(
     (task) => new Date(task.dueAt).getTime() < Date.now(),
@@ -39,10 +49,10 @@ export default async function CrmTasksPage() {
             value: todayTasks.length.toString(),
           },
         ]}
-        title="Bandeja operativa"
+        title="Tareas"
       />
 
-      <TaskInboxBoard leads={snapshot.leads} tasks={snapshot.tasks} />
+      <TaskInboxBoard leads={snapshot.leads} role={role} tasks={snapshot.tasks} />
     </div>
   );
 }

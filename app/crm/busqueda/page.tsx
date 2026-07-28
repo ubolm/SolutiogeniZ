@@ -1,9 +1,14 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { Search, MessageSquareMore, ListTodo, Building2 } from "lucide-react";
 
 import { CrmPageIntro } from "@/components/crm/CrmPageIntro";
 import { CrmSurfaceCard } from "@/components/crm/CrmSurfaceCard";
-import { searchCrm } from "@/lib/crm-store";
+import {
+  getCrmSessionCookieName,
+  verifyCrmSessionToken,
+} from "@/lib/crm-auth";
+import { searchCrmForSession } from "@/lib/crm-store";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +28,10 @@ export default async function CrmSearchPage({
 }) {
   const params = await searchParams;
   const query = params?.q?.trim() || "";
-  const results = await searchCrm(query);
+  const cookieStore = await cookies();
+  const token = cookieStore.get(getCrmSessionCookieName())?.value;
+  const session = await verifyCrmSessionToken(token);
+  const results = await searchCrmForSession(query, session);
   const totalResults =
     results.leads.length + results.tasks.length + results.conversations.length;
 

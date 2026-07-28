@@ -17,7 +17,11 @@ import { getSiteUrl } from "@/lib/utils";
 
 export default function Home() {
   const siteUrl = getSiteUrl();
-  const heroHighlights = ["Menos demora", "Más seguimiento", "Más ventas"];
+  const heroHighlights = [
+    "Auditoría inicial gratis",
+    "Demo guiada para tu caso",
+    "Sin compromiso",
+  ];
 
   const structuredData = {
     "@context": "https://schema.org",
@@ -42,23 +46,23 @@ export default function Home() {
           className="relative overflow-hidden pb-20 pt-20 md:pb-28 md:pt-24"
           id="inicio"
         >
-          <div className="absolute inset-x-0 top-0 -z-10 h-[38rem] bg-[radial-gradient(circle_at_20%_20%,rgba(122,215,255,0.35),transparent_28%),radial-gradient(circle_at_78%_12%,rgba(91,108,255,0.22),transparent_30%)]" />
+          <div className="absolute inset-x-0 top-0 -z-10 h-[40rem] bg-[radial-gradient(circle_at_14%_18%,rgba(122,215,255,0.32),transparent_26%),radial-gradient(circle_at_82%_12%,rgba(91,108,255,0.2),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,250,255,0.92))]" />
           <div className="container grid items-center gap-10 lg:grid-cols-[0.84fr_1.16fr] lg:gap-10 xl:gap-14">
             <Reveal className="min-w-0 lg:max-w-[33rem]">
-              <span className="eyebrow">
+              <span className="eyebrow border-primary/15 bg-white/85 text-primary-strong shadow-[0_10px_30px_rgba(91,108,255,0.08)]">
                 <Sparkles aria-hidden="true" size={16} />
                 Menos demora. Más control. Más oportunidades.
               </span>
-              <h1 className="font-heading mt-6 max-w-[8.3ch] text-[2.85rem] font-semibold leading-[0.92] tracking-normal text-ink sm:text-[3.6rem] md:text-[4.1rem] lg:text-[4.4rem] xl:text-[4.8rem]">
-                {brand.tagline}
+              <h1 className="font-heading mt-6 max-w-[7.4ch] text-[3rem] font-semibold leading-[0.9] tracking-normal text-ink sm:text-[3.9rem] md:text-[4.35rem] lg:text-[4.7rem] xl:text-[5.15rem]">
+                Cada demora te cuesta ventas.
               </h1>
               <p className="mt-5 max-w-[29rem] text-[1rem] leading-7 text-muted md:text-[1.08rem] md:leading-8">
-                {brand.description}
+                Ordenamos consultas, seguimientos y tareas para que tu empresa responda más rápido, venda mejor y deje de perder oportunidades por desorden.
               </p>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 {heroHighlights.map((item) => (
                   <div
-                    className="rounded-2xl border border-line bg-white/80 px-4 py-3 text-sm font-medium leading-6 text-ink shadow-[0_1px_0_rgba(11,11,15,0.03)]"
+                    className="rounded-2xl border border-white/70 bg-white/92 px-4 py-3 text-sm font-semibold leading-6 text-ink shadow-[0_16px_40px_rgba(11,11,15,0.06)]"
                     key={item}
                   >
                     {item}
@@ -67,10 +71,10 @@ export default function Home() {
               </div>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <ButtonLink href="#auditoria">
-                  Solicitar auditoria gratis
+                  Quiero mi auditoría gratis
                 </ButtonLink>
                 <ButtonLink href="#proceso" variant="secondary">
-                  Ver como funciona
+                  Ver el proceso
                 </ButtonLink>
               </div>
               <p className="mt-6 flex max-w-xl items-start gap-3 text-sm font-medium text-muted">
@@ -79,10 +83,10 @@ export default function Home() {
                   className="mt-0.5 text-primary-strong"
                   size={18}
                 />
-                {brand.trustLine}
+                En la primera auditoría te mostramos dónde hoy se está frenando tu operación y si vale la pena avanzar con una demo.
               </p>
             </Reveal>
-            <Reveal className="relative lg:pl-0 xl:pl-4" delay={0.1}>
+            <Reveal className="relative" delay={0.1}>
               <HeroAutomationFlow />
             </Reveal>
           </div>

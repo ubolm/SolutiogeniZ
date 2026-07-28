@@ -22,7 +22,7 @@ export function Wordmark({ variant = "header" }: WordmarkProps) {
         alt="SolutiogeniZ"
         className={cn(
           "w-auto transition group-hover:opacity-90",
-          isHeader ? "h-9 sm:h-10" : "h-12 md:h-14",
+          isHeader ? "h-10 sm:h-[2.85rem]" : "h-12 md:h-14",
         )}
         height={92}
         priority

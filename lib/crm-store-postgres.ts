@@ -52,6 +52,9 @@ type CreateManualLeadInput = {
   summary: string;
   owner?: string;
   notes?: string;
+  nextActionAt?: string;
+  customerContext?: Partial<CrmLead["customerContext"]>;
+  extendedProfile?: Partial<CrmLead["extendedProfile"]>;
 };
 
 type UpdateCrmLeadInput = {
@@ -60,6 +63,8 @@ type UpdateCrmLeadInput = {
   owner?: string;
   nextActionAt?: string;
   notes?: string;
+  customerContext?: Partial<CrmLead["customerContext"]>;
+  extendedProfile?: Partial<CrmLead["extendedProfile"]>;
 };
 
 type CreateCrmLeadActivityInput = {
@@ -67,6 +72,7 @@ type CreateCrmLeadActivityInput = {
   description: string;
   kind?: "note" | "contact";
   nextActionAt?: string;
+  status?: ChatbotLeadStatus;
 };
 
 type CreateCrmTaskInput = {
@@ -109,6 +115,8 @@ type LeadRow = {
   last_contact_at: string | Date;
   next_action_at: string | Date;
   notes: string;
+  customer_context?: unknown;
+  extended_profile?: unknown;
 };
 
 type ConversationRow = {
@@ -146,6 +154,91 @@ let ensureSchemaPromise: Promise<void> | null = null;
 
 function createId(prefix: string) {
   return `${prefix}_${randomUUID().slice(0, 8)}`;
+}
+
+function defaultCustomerContext() {
+  return {
+    detectedProblems: "",
+    capturedMetrics: "",
+    verbatimQuotes: "",
+    diagnosedSystems: "",
+    objections: "",
+  };
+}
+
+function defaultExtendedProfile() {
+  return {
+    profileUrl: "",
+    sector: "",
+    locality: "",
+    address: "",
+    route: "",
+    publicChannel: "",
+    opportunityDetected: "",
+    initialOffer: "",
+    recommendedDemo: "",
+    stage2: "",
+    stage3: "",
+  };
+}
+
+function normalizeLeadStatus(status: string | undefined): ChatbotLeadStatus {
+  switch (status) {
+    case "contactado":
+    case "respondio":
+    case "reunion_agendada":
+    case "propuesta_enviada":
+    case "negociacion":
+    case "cliente":
+    case "perdido":
+      return status;
+    case "nuevo":
+      return "contactado";
+    case "calificado":
+      return "respondio";
+    case "propuesta":
+      return "propuesta_enviada";
+    case "seguimiento":
+      return "negociacion";
+    case "cerrado_ganado":
+      return "cliente";
+    case "cerrado_perdido":
+      return "perdido";
+    default:
+      return "contactado";
+  }
+}
+
+function buildLeadStageMilestone(company: string, status: ChatbotLeadStatus) {
+  switch (status) {
+    case "contactado":
+      return `Lead ${company} paso a Contactado.`;
+    case "respondio":
+      return `Lead ${company} respondio y ya tiene conversacion activa.`;
+    case "reunion_agendada":
+      return `Reunion agendada con ${company}.`;
+    case "propuesta_enviada":
+      return `Propuesta enviada a ${company}.`;
+    case "negociacion":
+      return `${company} entro en etapa de negociacion.`;
+    case "cliente":
+      return `${company} se convirtio en cliente.`;
+    case "perdido":
+      return `La oportunidad con ${company} se marco como perdida.`;
+    default:
+      return `Lead ${company} cambio de etapa comercial.`;
+  }
+}
+
+function normalizeCustomerContext(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return defaultCustomerContext();
+  }
+
+  return {
+    ...defaultCustomerContext(),
+    ...value,
+  } as ReturnType<typeof defaultCustomerContext>;
 }
 
 function toIsoString(value: string | Date | null | undefined) {
@@ -189,11 +282,24 @@ function mapLead(row: LeadRow): CrmLead {
     interest: row.interest as ChatbotLeadInterest | "sin-definir",
     summary: row.summary,
     priority: "media",
-    status: row.status as ChatbotLeadStatus,
+    status: normalizeLeadStatus(row.status),
     owner: row.owner,
     lastContactAt: toIsoString(row.last_contact_at),
     nextActionAt: toIsoString(row.next_action_at),
     notes: row.notes,
+    customerContext: normalizeCustomerContext(row.customer_context),
+    extendedProfile: normalizeExtendedProfile(row.extended_profile),
+  };
+}
+
+function normalizeExtendedProfile(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return defaultExtendedProfile();
+  }
+
+  return {
+    ...defaultExtendedProfile(),
+    ...(value as Partial<CrmLead["extendedProfile"]>),
   };
 }
 
@@ -259,8 +365,20 @@ async function ensureCrmSchema() {
           owner TEXT NOT NULL,
           last_contact_at TIMESTAMPTZ NOT NULL,
           next_action_at TIMESTAMPTZ NOT NULL,
-          notes TEXT NOT NULL DEFAULT ''
+          notes TEXT NOT NULL DEFAULT '',
+          customer_context JSONB NOT NULL DEFAULT '{}'::jsonb,
+          extended_profile JSONB NOT NULL DEFAULT '{}'::jsonb
         );
+      `);
+
+      await pgQuery(`
+        ALTER TABLE crm_leads
+        ADD COLUMN IF NOT EXISTS customer_context JSONB NOT NULL DEFAULT '{}'::jsonb;
+      `);
+
+      await pgQuery(`
+        ALTER TABLE crm_leads
+        ADD COLUMN IF NOT EXISTS extended_profile JSONB NOT NULL DEFAULT '{}'::jsonb;
       `);
 
       await pgQuery(`
@@ -357,11 +475,11 @@ async function insertLead(client: PgClient, lead: CrmLead) {
       INSERT INTO crm_leads (
         id, created_at, updated_at, source, source_detail, name, company, email,
         phone, interest, summary, priority, status, owner, last_contact_at,
-        next_action_at, notes
+        next_action_at, notes, customer_context, extended_profile
       ) VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,
         $9,$10,$11,$12,$13,$14,$15,
-        $16,$17
+        $16,$17,$18,$19
       )
     `,
     [
@@ -382,6 +500,8 @@ async function insertLead(client: PgClient, lead: CrmLead) {
       lead.lastContactAt,
       lead.nextActionAt,
       lead.notes,
+      JSON.stringify(lead.customerContext),
+      JSON.stringify(lead.extendedProfile),
     ],
   );
 }
@@ -512,7 +632,9 @@ async function updateLeadRecord(client: PgClient, lead: CrmLead) {
         owner = $13,
         last_contact_at = $14,
         next_action_at = $15,
-        notes = $16
+        notes = $16,
+        customer_context = $17::jsonb,
+        extended_profile = $18::jsonb
       WHERE id = $1
     `,
     [
@@ -532,6 +654,8 @@ async function updateLeadRecord(client: PgClient, lead: CrmLead) {
       lead.lastContactAt,
       lead.nextActionAt,
       lead.notes,
+      JSON.stringify(lead.customerContext),
+      JSON.stringify(lead.extendedProfile),
     ],
   );
 }
@@ -636,9 +760,11 @@ export async function persistChatbotLeadPostgres({
           phone: lead.phone?.trim() || existingWebLead.phone,
           interest: lead.interest || detectedInterest || "sin-definir",
           summary: buildSummary(lead),
-          status: "nuevo",
+          status: "respondio",
           lastContactAt: now,
           nextActionAt,
+          customerContext: normalizeCustomerContext(existingWebLead.customerContext),
+          extendedProfile: normalizeExtendedProfile(existingWebLead.extendedProfile),
         }
       : {
           id: leadId,
@@ -653,11 +779,17 @@ export async function persistChatbotLeadPostgres({
           interest: lead.interest || detectedInterest || "sin-definir",
           summary: buildSummary(lead),
           priority: "media",
-          status: "nuevo",
+          status: "respondio",
           owner: "Sin asignar",
           lastContactAt: now,
           nextActionAt,
           notes: "",
+          customerContext: {
+            ...defaultCustomerContext(),
+            detectedProblems: lead.mainProblem.trim(),
+            diagnosedSystems: lead.currentProcess.trim(),
+          },
+          extendedProfile: defaultExtendedProfile(),
         };
 
     if (existingWebLead) {
@@ -746,11 +878,13 @@ export async function persistWebChatMessagePostgres({
         interest: detectedInterest || "sin-definir",
         summary: `Web chat: ${message}`,
         priority: "media",
-        status: "nuevo",
+        status: "respondio",
         owner: "Sin asignar",
         lastContactAt: now,
         nextActionAt,
         notes: "",
+        customerContext: defaultCustomerContext(),
+        extendedProfile: defaultExtendedProfile(),
       };
 
       await insertLead(client, lead);
@@ -762,16 +896,17 @@ export async function persistWebChatMessagePostgres({
         now,
       );
     } else {
-      lead = {
-        ...lead,
-        updatedAt: now,
-        lastContactAt: now,
-        summary: `Web chat: ${message}`,
+        lead = {
+          ...lead,
+          updatedAt: now,
+          lastContactAt: now,
+          summary: `Web chat: ${message}`,
         interest:
-          (lead.interest === "sin-definir" || !lead.interest) && detectedInterest
-            ? detectedInterest
-            : lead.interest,
-      };
+            (lead.interest === "sin-definir" || !lead.interest) && detectedInterest
+              ? detectedInterest
+              : lead.interest,
+          extendedProfile: normalizeExtendedProfile(lead.extendedProfile),
+        };
       await updateLeadRecord(client, lead);
     }
 
@@ -843,6 +978,9 @@ export async function createManualCrmLeadPostgres({
   summary,
   owner,
   notes,
+  nextActionAt,
+  customerContext,
+  extendedProfile,
 }: CreateManualLeadInput) {
   await ensureCrmSchema();
 
@@ -861,11 +999,16 @@ export async function createManualCrmLeadPostgres({
       interest: interest || "sin-definir",
       summary: summary.trim(),
       priority: "media",
-      status: "nuevo",
+      status: "contactado",
       owner: owner?.trim() || "Sin asignar",
       lastContactAt: now,
-      nextActionAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      nextActionAt:
+        typeof nextActionAt === "string" && !Number.isNaN(Date.parse(nextActionAt))
+          ? nextActionAt
+          : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       notes: notes?.trim() || "",
+      customerContext: normalizeCustomerContext(customerContext),
+      extendedProfile: normalizeExtendedProfile(extendedProfile),
     };
 
     await insertLead(client, lead);
@@ -887,6 +1030,8 @@ export async function updateCrmLeadPostgres({
   owner,
   nextActionAt,
   notes,
+  customerContext,
+  extendedProfile,
 }: UpdateCrmLeadInput) {
   await ensureCrmSchema();
 
@@ -900,10 +1045,11 @@ export async function updateCrmLeadPostgres({
     const changes: string[] = [];
     const now = new Date().toISOString();
     const nextLead = { ...lead };
+    let stageMilestone: string | null = null;
 
     if (status && status !== nextLead.status) {
-      changes.push(`estado: ${nextLead.status} -> ${status}`);
       nextLead.status = status;
+      stageMilestone = buildLeadStageMilestone(nextLead.company, status);
     }
 
     if (typeof owner === "string" && owner.trim() !== nextLead.owner) {
@@ -926,10 +1072,44 @@ export async function updateCrmLeadPostgres({
       nextLead.notes = notes;
     }
 
+    if (customerContext) {
+      const nextContext = normalizeCustomerContext({
+        ...nextLead.customerContext,
+        ...customerContext,
+      });
+
+      if (JSON.stringify(nextContext) !== JSON.stringify(nextLead.customerContext)) {
+        changes.push("contexto comercial actualizado");
+        nextLead.customerContext = nextContext;
+      }
+    }
+
+    if (extendedProfile) {
+      const nextProfile = normalizeExtendedProfile({
+        ...nextLead.extendedProfile,
+        ...extendedProfile,
+      });
+
+      if (JSON.stringify(nextProfile) !== JSON.stringify(nextLead.extendedProfile)) {
+        changes.push("perfil extendido actualizado");
+        nextLead.extendedProfile = nextProfile;
+      }
+    }
+
     nextLead.updatedAt = now;
     nextLead.lastContactAt = now;
 
     await updateLeadRecord(client, nextLead);
+
+    if (stageMilestone) {
+      await createActivity(
+        client,
+        nextLead.id,
+        "lead_updated",
+        stageMilestone,
+        now,
+      );
+    }
 
     if (changes.length > 0) {
       await createActivity(
@@ -950,6 +1130,7 @@ export async function createCrmLeadActivityPostgres({
   description,
   kind = "note",
   nextActionAt,
+  status,
 }: CreateCrmLeadActivityInput) {
   await ensureCrmSchema();
 
@@ -966,18 +1147,35 @@ export async function createCrmLeadActivityPostgres({
       throw new Error("Description required.");
     }
 
+    if (kind === "contact" && (!nextActionAt || Number.isNaN(Date.parse(nextActionAt)))) {
+      throw new Error("Next action required.");
+    }
+
     const now = new Date().toISOString();
     const nextLead = { ...lead };
+    let stageMilestone: string | null = null;
 
     if (kind === "contact") {
       nextLead.lastContactAt = now;
       nextLead.updatedAt = now;
 
-      if (nextLead.status === "nuevo") {
-        nextLead.status = "contactado";
+      if (status && status !== nextLead.status) {
+        nextLead.status = status;
+        stageMilestone = buildLeadStageMilestone(nextLead.company, status);
+      } else if (nextLead.status === "contactado") {
+        nextLead.status = "respondio";
+        stageMilestone = buildLeadStageMilestone(
+          nextLead.company,
+          "respondio",
+        );
       }
     } else {
       nextLead.updatedAt = now;
+
+      if (status && status !== nextLead.status) {
+        nextLead.status = status;
+        stageMilestone = buildLeadStageMilestone(nextLead.company, status);
+      }
     }
 
     if (
@@ -992,6 +1190,17 @@ export async function createCrmLeadActivityPostgres({
       : cleanDescription;
 
     await updateLeadRecord(client, nextLead);
+
+    if (stageMilestone) {
+      await createActivity(
+        client,
+        nextLead.id,
+        "lead_updated",
+        stageMilestone,
+        now,
+      );
+    }
+
     await createActivity(
       client,
       nextLead.id,
@@ -1155,11 +1364,13 @@ export async function persistWhatsAppMessagePostgres({
         interest: detectedInterest || "sin-definir",
         summary: `WhatsApp: ${message}`,
         priority: "media",
-        status: "nuevo",
+        status: "respondio",
         owner: "Sin asignar",
         lastContactAt: now,
         nextActionAt,
         notes: "",
+        customerContext: defaultCustomerContext(),
+        extendedProfile: defaultExtendedProfile(),
       };
 
       await insertLead(client, lead);
@@ -1171,16 +1382,17 @@ export async function persistWhatsAppMessagePostgres({
         now,
       );
     } else {
-      lead = {
-        ...lead,
-        updatedAt: now,
-        lastContactAt: now,
-        source: "whatsapp",
+        lead = {
+          ...lead,
+          updatedAt: now,
+          lastContactAt: now,
+          source: "whatsapp",
         interest:
-          (lead.interest === "sin-definir" || !lead.interest) && detectedInterest
-            ? detectedInterest
-            : lead.interest,
-      };
+            (lead.interest === "sin-definir" || !lead.interest) && detectedInterest
+              ? detectedInterest
+              : lead.interest,
+          extendedProfile: normalizeExtendedProfile(lead.extendedProfile),
+        };
       await updateLeadRecord(client, lead);
     }
 

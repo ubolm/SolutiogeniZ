@@ -16,18 +16,65 @@ type ManualLeadState = {
   summary: string;
   owner: string;
   notes: string;
+  nextActionAt: string;
+  customerContext: {
+    detectedProblems: string;
+    diagnosedSystems: string;
+    objections: string;
+  };
+  extendedProfile: {
+    profileUrl: string;
+    sector: string;
+    locality: string;
+    address: string;
+    route: string;
+    publicChannel: string;
+    opportunityDetected: string;
+    initialOffer: string;
+    recommendedDemo: string;
+    stage2: string;
+    stage3: string;
+  };
 };
 
-const initialState: ManualLeadState = {
-  name: "",
-  company: "",
-  email: "",
-  phone: "",
-  interest: "sin-definir",
-  summary: "",
-  owner: "",
-  notes: "",
-};
+function getDefaultNextActionAt() {
+  const date = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
+function getInitialState(): ManualLeadState {
+  return {
+    name: "",
+    company: "",
+    email: "",
+    phone: "",
+    interest: "sin-definir",
+    summary: "",
+    owner: "",
+    notes: "",
+    nextActionAt: getDefaultNextActionAt(),
+    customerContext: {
+      detectedProblems: "",
+      diagnosedSystems: "",
+      objections: "",
+    },
+    extendedProfile: {
+      profileUrl: "",
+      sector: "",
+      locality: "",
+      address: "",
+      route: "",
+      publicChannel: "",
+      opportunityDetected: "",
+      initialOffer: "",
+      recommendedDemo: "",
+      stage2: "",
+      stage3: "",
+    },
+  };
+}
 
 const interestOptions = [
   { value: "sin-definir", label: "Todavía no definido" },
@@ -37,9 +84,13 @@ const interestOptions = [
   })),
 ];
 
-export function ManualLeadForm() {
+export function ManualLeadForm({
+  ownerOptions,
+}: {
+  ownerOptions: string[];
+}) {
   const router = useRouter();
-  const [values, setValues] = useState<ManualLeadState>(initialState);
+  const [values, setValues] = useState<ManualLeadState>(getInitialState);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">(
     "idle",
   );
@@ -54,7 +105,10 @@ export function ManualLeadForm() {
       const response = await fetch("/api/crm/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          ...values,
+          nextActionAt: new Date(values.nextActionAt).toISOString(),
+        }),
       });
 
       const body = (await response.json().catch(() => null)) as
@@ -67,7 +121,7 @@ export function ManualLeadForm() {
         return;
       }
 
-      setValues(initialState);
+      setValues(getInitialState());
       setStatus("success");
       setMessage("Lead creado y agregado al pipeline.");
       router.refresh();
@@ -154,14 +208,21 @@ export function ManualLeadForm() {
               </option>
             ))}
           </select>
-          <input
+          <select
             className="field"
             onChange={(event) =>
               setValues((current) => ({ ...current, owner: event.target.value }))
             }
-            placeholder="Responsable (opcional)"
             value={values.owner}
-          />
+          >
+            <option value="">Responsable (opcional)</option>
+            <option value="Sin asignar">Sin asignar</option>
+            {ownerOptions.map((owner) => (
+              <option key={owner} value={owner}>
+                {owner}
+              </option>
+            ))}
+          </select>
         </div>
 
         <textarea
@@ -169,9 +230,266 @@ export function ManualLeadForm() {
           onChange={(event) =>
             setValues((current) => ({ ...current, summary: event.target.value }))
           }
-          placeholder="Resumen del caso, necesidad o contexto comercial"
+          placeholder="Resumen comercial del caso, necesidad detectada o pedido inicial"
           value={values.summary}
         />
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="grid gap-1.5 text-xs font-semibold text-ink">
+            Proxima accion
+            <input
+              className="field"
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  nextActionAt: event.target.value,
+                }))
+              }
+              type="datetime-local"
+              value={values.nextActionAt}
+            />
+          </label>
+          <div className="rounded-[1.2rem] border border-line bg-[#f8faff] px-4 py-3 text-sm leading-6 text-muted">
+            Todo lead manual deberia entrar con una proxima accion clara para no enfriarse.
+          </div>
+        </div>
+
+        <div className="grid gap-4 rounded-[1.4rem] border border-line bg-[#fbfcff] p-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-strong">
+              Contexto comercial inicial
+            </p>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              Carga solo lo esencial para que el equipo ya entienda el caso al abrir el lead.
+            </p>
+          </div>
+
+          <textarea
+            className="field min-h-20 resize-y"
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                customerContext: {
+                  ...current.customerContext,
+                  detectedProblems: event.target.value,
+                },
+              }))
+            }
+            placeholder="Problemas detectados"
+            value={values.customerContext.detectedProblems}
+          />
+
+          <textarea
+            className="field min-h-20 resize-y"
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                customerContext: {
+                  ...current.customerContext,
+                  diagnosedSystems: event.target.value,
+                },
+              }))
+            }
+            placeholder="Sistemas o herramientas diagnosticadas"
+            value={values.customerContext.diagnosedSystems}
+          />
+
+          <textarea
+            className="field min-h-20 resize-y"
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                customerContext: {
+                  ...current.customerContext,
+                  objections: event.target.value,
+                },
+              }))
+            }
+            placeholder="Objeciones o frenos iniciales"
+            value={values.customerContext.objections}
+          />
+        </div>
+
+        <div className="grid gap-4 rounded-[1.4rem] border border-line bg-[#fbfcff] p-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-strong">
+              Perfil extendido
+            </p>
+            <p className="mt-1 text-sm leading-6 text-muted">
+              Estos datos ayudan a enriquecer la ficha del lead sin sobrecargar la vista principal.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <input
+              className="field"
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  extendedProfile: {
+                    ...current.extendedProfile,
+                    profileUrl: event.target.value,
+                  },
+                }))
+              }
+              placeholder="Logo o perfil URL"
+              value={values.extendedProfile.profileUrl}
+            />
+            <input
+              className="field"
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  extendedProfile: {
+                    ...current.extendedProfile,
+                    sector: event.target.value,
+                  },
+                }))
+              }
+              placeholder="Rubro"
+              value={values.extendedProfile.sector}
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <input
+              className="field"
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  extendedProfile: {
+                    ...current.extendedProfile,
+                    locality: event.target.value,
+                  },
+                }))
+              }
+              placeholder="Localidad"
+              value={values.extendedProfile.locality}
+            />
+            <input
+              className="field"
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  extendedProfile: {
+                    ...current.extendedProfile,
+                    address: event.target.value,
+                  },
+                }))
+              }
+              placeholder="Direccion"
+              value={values.extendedProfile.address}
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <input
+              className="field"
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  extendedProfile: {
+                    ...current.extendedProfile,
+                    route: event.target.value,
+                  },
+                }))
+              }
+              placeholder="Ruta"
+              value={values.extendedProfile.route}
+            />
+            <input
+              className="field"
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  extendedProfile: {
+                    ...current.extendedProfile,
+                    publicChannel: event.target.value,
+                  },
+                }))
+              }
+              placeholder="Canal o modalidad publica"
+              value={values.extendedProfile.publicChannel}
+            />
+          </div>
+
+          <textarea
+            className="field min-h-20 resize-y"
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                extendedProfile: {
+                  ...current.extendedProfile,
+                  opportunityDetected: event.target.value,
+                },
+              }))
+            }
+            placeholder="Oportunidad detectada"
+            value={values.extendedProfile.opportunityDetected}
+          />
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <textarea
+              className="field min-h-20 resize-y"
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  extendedProfile: {
+                    ...current.extendedProfile,
+                    initialOffer: event.target.value,
+                  },
+                }))
+              }
+              placeholder="Oferta inicial"
+              value={values.extendedProfile.initialOffer}
+            />
+            <textarea
+              className="field min-h-20 resize-y"
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  extendedProfile: {
+                    ...current.extendedProfile,
+                    recommendedDemo: event.target.value,
+                  },
+                }))
+              }
+              placeholder="Demo recomendada"
+              value={values.extendedProfile.recommendedDemo}
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <input
+              className="field"
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  extendedProfile: {
+                    ...current.extendedProfile,
+                    stage2: event.target.value,
+                  },
+                }))
+              }
+              placeholder="Etapa 2"
+              value={values.extendedProfile.stage2}
+            />
+            <input
+              className="field"
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  extendedProfile: {
+                    ...current.extendedProfile,
+                    stage3: event.target.value,
+                  },
+                }))
+              }
+              placeholder="Etapa 3"
+              value={values.extendedProfile.stage3}
+            />
+          </div>
+        </div>
 
         <textarea
           className="field min-h-24 resize-y"

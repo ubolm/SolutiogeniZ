@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 
 import {
+  resolveCrmSafePathForRole,
   createCrmSessionToken,
   getCrmSessionCookieName,
   getCrmSessionMaxAge,
   isCrmAuthConfigured,
-  isValidCrmCredentials,
+  resolveCrmIdentityFromEnv,
 } from "@/lib/crm-auth";
+import { resolveCrmIdentityFromDatabase } from "@/lib/crm-users";
 
 type LoginPayload = {
   username?: string;
@@ -14,12 +16,12 @@ type LoginPayload = {
   next?: string;
 };
 
-function resolveNextPath(value: string | undefined) {
+function resolveNextPath(value: string | undefined, role: "admin" | "vendedor") {
   if (!value || !value.startsWith("/crm")) {
-    return "/crm";
+    return resolveCrmSafePathForRole(role, "/crm");
   }
 
-  return value;
+  return resolveCrmSafePathForRole(role, value);
 }
 
 export async function POST(request: Request) {
@@ -45,17 +47,22 @@ export async function POST(request: Request) {
   const username = String(body.username ?? "").trim();
   const password = String(body.password ?? "").trim();
 
-  if (!isValidCrmCredentials(username, password)) {
+  const identity =
+    (await resolveCrmIdentityFromDatabase(username, password)) ??
+    resolveCrmIdentityFromEnv(username, password);
+
+  if (!identity) {
     return NextResponse.json(
       { error: "Usuario o clave incorrectos." },
       { status: 401 },
     );
   }
 
-  const token = await createCrmSessionToken(username);
+  const token = await createCrmSessionToken(identity);
   const response = NextResponse.json({
     ok: true,
-    redirectTo: resolveNextPath(body.next),
+    redirectTo: resolveNextPath(body.next, identity.role),
+    role: identity.role,
   });
 
   response.cookies.set({

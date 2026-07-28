@@ -46,11 +46,11 @@ export function HeroAutomationFlow() {
               Automatización en acción
             </p>
             <p className="font-heading mt-1 max-w-[16ch] text-lg font-semibold leading-tight sm:text-[1.55rem]">
-              Consulta, respuesta y seguimiento
+              De la consulta al seguimiento activo
             </p>
           </div>
             <span className="rounded-full border border-aqua/25 bg-aqua/10 px-3 py-1 text-xs font-semibold text-aqua">
-              Activo
+              En marcha
             </span>
         </div>
 

@@ -14,6 +14,11 @@ export function Header() {
   const pathname = usePathname();
   const resolveHref = (href: string) =>
     pathname === "/" || href.startsWith("http") ? href : `/${href}`;
+  const resolveNavLabel = (href: string, label: string) => {
+    if (href === "#proceso") return "Proceso";
+    if (href === "#preguntas") return "FAQ";
+    return label;
+  };
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -34,60 +39,64 @@ export function Header() {
   }, [open]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/70 bg-paper/86 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-white/50 bg-[rgba(249,251,255,0.72)] backdrop-blur-[22px]">
       <a
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-ink focus:shadow-focus"
         href="#contenido"
       >
         Saltar al contenido
       </a>
-      <div className="container grid h-20 grid-cols-[auto_1fr_auto] items-center gap-4 lg:gap-6">
-        <div className="justify-self-start">
+
+      <div className="container flex h-[4.85rem] items-center gap-4 lg:grid lg:h-[5.15rem] lg:grid-cols-[17rem_minmax(0,1fr)_17rem] lg:gap-7">
+        <div className="shrink-0 pl-1 lg:justify-self-start">
           <Wordmark />
         </div>
+
         <nav
-          aria-label="Navegación principal"
-          className="hidden items-center justify-center gap-1 justify-self-center lg:flex"
+          aria-label="Navegacion principal"
+          className="hidden items-center justify-center lg:flex"
         >
-          {navigation.map((item) => (
-            <a
-              className="rounded-full px-4 py-2 text-sm font-medium text-muted transition hover:bg-white hover:text-ink focus:outline-none focus-visible:shadow-focus"
-              href={resolveHref(item.href)}
-              key={item.href}
-            >
-              {item.label}
-            </a>
-          ))}
+          <div className="flex items-center gap-1 rounded-full border border-white/85 bg-white/62 px-3 py-1 shadow-[0_12px_28px_rgba(25,32,72,0.06)]">
+            {navigation.map((item) => (
+              <a
+                className="whitespace-nowrap rounded-full px-4 py-2 text-center text-[0.9rem] font-medium leading-none text-muted transition hover:bg-white hover:text-ink focus:outline-none focus-visible:shadow-focus xl:px-[1.15rem]"
+                href={resolveHref(item.href)}
+                key={item.href}
+              >
+                {resolveNavLabel(item.href, item.label)}
+              </a>
+            ))}
+          </div>
         </nav>
-        <div className="hidden justify-self-end lg:block">
+
+        <div className="hidden shrink-0 lg:block lg:justify-self-end">
           <ButtonLink
+            className="min-w-[14rem] px-5.5 py-2.5 text-[0.93rem] shadow-[0_14px_28px_rgba(91,108,255,0.2)]"
             href={resolveHref("#auditoria")}
             onClick={() => trackConversionEvent("booking_click")}
           >
             Solicitar auditoria gratis
           </ButtonLink>
         </div>
+
         <button
           aria-controls="mobile-menu"
           aria-expanded={open}
-          aria-label={open ? "Cerrar menú" : "Abrir menú"}
-          className="inline-flex h-11 w-11 items-center justify-center justify-self-end rounded-full border border-line bg-white text-ink transition hover:border-primary/40 focus:outline-none focus-visible:shadow-focus lg:hidden"
+          aria-label={open ? "Cerrar menu" : "Abrir menu"}
+          className="ml-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-line bg-white text-ink transition hover:border-primary/40 focus:outline-none focus-visible:shadow-focus lg:hidden"
           onClick={() => setOpen((value) => !value)}
           type="button"
         >
-          {open ? (
-            <X aria-hidden="true" size={20} />
-          ) : (
-            <Menu aria-hidden="true" size={20} />
-          )}
+          {open ? <X aria-hidden="true" size={20} /> : <Menu aria-hidden="true" size={20} />}
         </button>
       </div>
+
       {open ? (
         <div
           className="fixed inset-x-0 top-20 z-40 border-b border-line bg-white p-4 shadow-soft lg:hidden"
           id="mobile-menu"
         >
-          <nav aria-label="Navegación móvil" className="grid gap-2">
+          <nav aria-label="Navegacion movil" className="grid gap-2">
             {navigation.map((item) => (
               <a
                 className="rounded-xl px-4 py-3 text-base font-medium text-ink hover:bg-paper focus:outline-none focus-visible:shadow-focus"
@@ -95,9 +104,10 @@ export function Header() {
                 key={item.href}
                 onClick={() => setOpen(false)}
               >
-                {item.label}
+                {resolveNavLabel(item.href, item.label)}
               </a>
             ))}
+
             <ButtonLink
               className="mt-2 w-full"
               href={resolveHref("#auditoria")}

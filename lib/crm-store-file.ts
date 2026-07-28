@@ -27,6 +27,26 @@ export type CrmLead = {
   lastContactAt: string;
   nextActionAt: string;
   notes: string;
+  customerContext: {
+    detectedProblems: string;
+    capturedMetrics: string;
+    verbatimQuotes: string;
+    diagnosedSystems: string;
+    objections: string;
+  };
+  extendedProfile: {
+    profileUrl: string;
+    sector: string;
+    locality: string;
+    address: string;
+    route: string;
+    publicChannel: string;
+    opportunityDetected: string;
+    initialOffer: string;
+    recommendedDemo: string;
+    stage2: string;
+    stage3: string;
+  };
 };
 
 export type CrmConversation = {
@@ -125,6 +145,9 @@ type CreateManualLeadInput = {
   summary: string;
   owner?: string;
   notes?: string;
+  nextActionAt?: string;
+  customerContext?: Partial<CrmLead["customerContext"]>;
+  extendedProfile?: Partial<CrmLead["extendedProfile"]>;
 };
 
 const dataDirectory = path.join(process.cwd(), "data");
@@ -136,6 +159,107 @@ const defaultStore: CrmStore = {
   activities: [],
   tasks: [],
 };
+
+function defaultCustomerContext() {
+  return {
+    detectedProblems: "",
+    capturedMetrics: "",
+    verbatimQuotes: "",
+    diagnosedSystems: "",
+    objections: "",
+  };
+}
+
+function defaultExtendedProfile() {
+  return {
+    profileUrl: "",
+    sector: "",
+    locality: "",
+    address: "",
+    route: "",
+    publicChannel: "",
+    opportunityDetected: "",
+    initialOffer: "",
+    recommendedDemo: "",
+    stage2: "",
+    stage3: "",
+  };
+}
+
+function normalizeLeadStatus(status: string | undefined): ChatbotLeadStatus {
+  switch (status) {
+    case "contactado":
+    case "respondio":
+    case "reunion_agendada":
+    case "propuesta_enviada":
+    case "negociacion":
+    case "cliente":
+    case "perdido":
+      return status;
+    case "nuevo":
+      return "contactado";
+    case "calificado":
+      return "respondio";
+    case "propuesta":
+      return "propuesta_enviada";
+    case "seguimiento":
+      return "negociacion";
+    case "cerrado_ganado":
+      return "cliente";
+    case "cerrado_perdido":
+      return "perdido";
+    default:
+      return "contactado";
+  }
+}
+
+function buildLeadStageMilestone(company: string, status: ChatbotLeadStatus) {
+  switch (status) {
+    case "contactado":
+      return `Lead ${company} paso a Contactado.`;
+    case "respondio":
+      return `Lead ${company} respondio y ya tiene conversacion activa.`;
+    case "reunion_agendada":
+      return `Reunion agendada con ${company}.`;
+    case "propuesta_enviada":
+      return `Propuesta enviada a ${company}.`;
+    case "negociacion":
+      return `${company} entro en etapa de negociacion.`;
+    case "cliente":
+      return `${company} se convirtio en cliente.`;
+    case "perdido":
+      return `La oportunidad con ${company} se marco como perdida.`;
+    default:
+      return `Lead ${company} cambio de etapa comercial.`;
+  }
+}
+
+function normalizeCustomerContext(
+  value: Partial<CrmLead["customerContext"]> | null | undefined,
+) {
+  return {
+    ...defaultCustomerContext(),
+    ...(value ?? {}),
+  };
+}
+
+function normalizeExtendedProfile(
+  value: Partial<CrmLead["extendedProfile"]> | null | undefined,
+) {
+  return {
+    ...defaultExtendedProfile(),
+    ...(value ?? {}),
+  };
+}
+
+function normalizeLeadRecord(lead: Partial<CrmLead>) {
+  return {
+    ...lead,
+    status: normalizeLeadStatus(lead.status),
+    customerContext: normalizeCustomerContext(lead.customerContext),
+    extendedProfile: normalizeExtendedProfile(lead.extendedProfile),
+  } as CrmLead;
+}
 
 let writeQueue = Promise.resolve();
 
@@ -205,7 +329,9 @@ async function readStore() {
   try {
     const parsed = JSON.parse(raw) as Partial<CrmStore>;
     return {
-      leads: Array.isArray(parsed.leads) ? parsed.leads : [],
+      leads: Array.isArray(parsed.leads)
+        ? parsed.leads.map((lead) => normalizeLeadRecord(lead))
+        : [],
       conversations: Array.isArray(parsed.conversations)
         ? parsed.conversations
         : [],
@@ -270,9 +396,11 @@ export async function persistChatbotLead({
           phone: lead.phone?.trim() || existingWebLead.phone,
           interest: lead.interest || detectedInterest || "sin-definir",
           summary: buildSummary(lead),
-          status: "nuevo",
+          status: "respondio",
           lastContactAt: now,
           nextActionAt,
+          customerContext: normalizeCustomerContext(existingWebLead.customerContext),
+          extendedProfile: normalizeExtendedProfile(existingWebLead.extendedProfile),
         }
       : {
           id: leadId,
@@ -287,11 +415,17 @@ export async function persistChatbotLead({
           interest: lead.interest || detectedInterest || "sin-definir",
           summary: buildSummary(lead),
           priority: "media",
-          status: "nuevo",
+          status: "respondio",
           owner: "Sin asignar",
           lastContactAt: now,
           nextActionAt,
           notes: "",
+          customerContext: {
+            ...defaultCustomerContext(),
+            detectedProblems: lead.mainProblem.trim(),
+            diagnosedSystems: lead.currentProcess.trim(),
+          },
+          extendedProfile: defaultExtendedProfile(),
         };
 
     const existingConversation = store.conversations.find(
@@ -396,11 +530,13 @@ export async function persistWebChatMessage({
         interest: detectedInterest || "sin-definir",
         summary: `Web chat: ${message}`,
         priority: "media",
-        status: "nuevo",
+        status: "respondio",
         owner: "Sin asignar",
         lastContactAt: now,
         nextActionAt,
         notes: "",
+        customerContext: defaultCustomerContext(),
+        extendedProfile: defaultExtendedProfile(),
       };
 
       store.leads.unshift(lead);
@@ -588,11 +724,14 @@ export async function createManualCrmLead({
   summary,
   owner,
   notes,
+  nextActionAt,
+  customerContext,
+  extendedProfile,
 }: CreateManualLeadInput) {
   return updateStore((store) => {
     const now = new Date().toISOString();
     const leadId = createId("lead");
-    const nextActionAt = new Date(
+    const defaultNextActionAt = new Date(
       Date.now() + 24 * 60 * 60 * 1000,
     ).toISOString();
 
@@ -609,11 +748,16 @@ export async function createManualCrmLead({
       interest: interest || "sin-definir",
       summary: summary.trim(),
       priority: "media",
-      status: "nuevo",
+      status: "contactado",
       owner: owner?.trim() || "Sin asignar",
       lastContactAt: now,
-      nextActionAt,
+      nextActionAt:
+        typeof nextActionAt === "string" && !Number.isNaN(Date.parse(nextActionAt))
+          ? nextActionAt
+          : defaultNextActionAt,
       notes: notes?.trim() || "",
+      customerContext: normalizeCustomerContext(customerContext),
+      extendedProfile: normalizeExtendedProfile(extendedProfile),
     };
 
     store.leads.unshift(lead);
@@ -636,6 +780,8 @@ type UpdateCrmLeadInput = {
   owner?: string;
   nextActionAt?: string;
   notes?: string;
+  customerContext?: Partial<CrmLead["customerContext"]>;
+  extendedProfile?: Partial<CrmLead["extendedProfile"]>;
 };
 
 export async function updateCrmLead({
@@ -644,6 +790,8 @@ export async function updateCrmLead({
   owner,
   nextActionAt,
   notes,
+  customerContext,
+  extendedProfile,
 }: UpdateCrmLeadInput) {
   return updateStore((store) => {
     const lead = store.leads.find((item) => item.id === id);
@@ -654,10 +802,11 @@ export async function updateCrmLead({
 
     const changes: string[] = [];
     const now = new Date().toISOString();
+    let stageMilestone: string | null = null;
 
     if (status && status !== lead.status) {
-      changes.push(`estado: ${lead.status} -> ${status}`);
       lead.status = status;
+      stageMilestone = buildLeadStageMilestone(lead.company, status);
     }
 
     if (typeof owner === "string" && owner.trim() !== lead.owner) {
@@ -677,8 +826,43 @@ export async function updateCrmLead({
       lead.notes = notes;
     }
 
+    if (customerContext) {
+      const nextContext = normalizeCustomerContext({
+        ...lead.customerContext,
+        ...customerContext,
+      });
+
+      if (JSON.stringify(nextContext) !== JSON.stringify(lead.customerContext)) {
+        changes.push("contexto comercial actualizado");
+        lead.customerContext = nextContext;
+      }
+    }
+
+    if (extendedProfile) {
+      const nextProfile = normalizeExtendedProfile({
+        ...lead.extendedProfile,
+        ...extendedProfile,
+      });
+
+      if (JSON.stringify(nextProfile) !== JSON.stringify(lead.extendedProfile)) {
+        changes.push("perfil extendido actualizado");
+        lead.extendedProfile = nextProfile;
+      }
+    }
+
     lead.updatedAt = now;
     lead.lastContactAt = now;
+
+    if (stageMilestone) {
+      store.activities.unshift({
+        id: createId("act"),
+        leadId: lead.id,
+        type: "lead_updated",
+        description: stageMilestone,
+        createdAt: now,
+        createdBy: "chatbot",
+      });
+    }
 
     if (changes.length > 0) {
       store.activities.unshift({
@@ -700,6 +884,7 @@ type CreateCrmLeadActivityInput = {
   description: string;
   kind?: "note" | "contact";
   nextActionAt?: string;
+  status?: ChatbotLeadStatus;
 };
 
 export async function createCrmLeadActivity({
@@ -707,6 +892,7 @@ export async function createCrmLeadActivity({
   description,
   kind = "note",
   nextActionAt,
+  status,
 }: CreateCrmLeadActivityInput) {
   return updateStore((store) => {
     const lead = store.leads.find((item) => item.id === leadId);
@@ -717,20 +903,34 @@ export async function createCrmLeadActivity({
 
     const now = new Date().toISOString();
     const cleanDescription = description.trim();
+    let stageMilestone: string | null = null;
 
     if (!cleanDescription) {
       throw new Error("Description required.");
+    }
+
+    if (kind === "contact" && (!nextActionAt || Number.isNaN(Date.parse(nextActionAt)))) {
+      throw new Error("Next action required.");
     }
 
     if (kind === "contact") {
       lead.lastContactAt = now;
       lead.updatedAt = now;
 
-      if (lead.status === "nuevo") {
-        lead.status = "contactado";
+      if (status && status !== lead.status) {
+        lead.status = status;
+        stageMilestone = buildLeadStageMilestone(lead.company, status);
+      } else if (lead.status === "contactado") {
+        lead.status = "respondio";
+        stageMilestone = buildLeadStageMilestone(lead.company, "respondio");
       }
     } else {
       lead.updatedAt = now;
+
+      if (status && status !== lead.status) {
+        lead.status = status;
+        stageMilestone = buildLeadStageMilestone(lead.company, status);
+      }
     }
 
     if (typeof nextActionAt === "string" && !Number.isNaN(Date.parse(nextActionAt))) {
@@ -740,6 +940,17 @@ export async function createCrmLeadActivity({
     lead.notes = lead.notes
       ? `${lead.notes}\n${cleanDescription}`
       : cleanDescription;
+
+    if (stageMilestone) {
+      store.activities.unshift({
+        id: createId("act"),
+        leadId: lead.id,
+        type: "lead_updated",
+        description: stageMilestone,
+        createdAt: now,
+        createdBy: "chatbot",
+      });
+    }
 
     store.activities.unshift({
       id: createId("act"),
@@ -907,11 +1118,13 @@ export async function persistWhatsAppMessage({
         interest: detectedInterest || "sin-definir",
         summary: `WhatsApp: ${message}`,
         priority: "media",
-        status: "nuevo",
+        status: "respondio",
         owner: "Sin asignar",
         lastContactAt: now,
         nextActionAt,
         notes: "",
+        customerContext: defaultCustomerContext(),
+        extendedProfile: defaultExtendedProfile(),
       };
 
       store.leads.unshift(lead);

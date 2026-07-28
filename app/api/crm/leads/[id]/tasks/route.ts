@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { createCrmTask } from "@/lib/crm-store";
+import {
+  getCrmRoleCapabilities,
+  getCrmSessionCookieName,
+  verifyCrmSessionToken,
+} from "@/lib/crm-auth";
+import { createCrmTask, getCrmLeadDetailForSession } from "@/lib/crm-store";
 
 type TaskPayload = {
   title?: string;
@@ -24,6 +29,41 @@ export async function POST(
   request: Request,
   context: { params: { id: string } },
 ) {
+  const token = request.headers
+    .get("cookie")
+    ?.split(";")
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(`${getCrmSessionCookieName()}=`))
+    ?.split("=")
+    .slice(1)
+    .join("=");
+  const session = await verifyCrmSessionToken(token);
+
+  if (!session) {
+    return NextResponse.json(
+      { error: "Sesion requerida para crear tareas." },
+      { status: 401 },
+    );
+  }
+
+  const detail = await getCrmLeadDetailForSession(context.params.id, session);
+
+  if (!detail) {
+    return NextResponse.json(
+      { error: "No tienes acceso a este lead." },
+      { status: 404 },
+    );
+  }
+
+  const capabilities = getCrmRoleCapabilities(session.role);
+
+  if (!capabilities.canCreateLeadTasks) {
+    return NextResponse.json(
+      { error: "No tienes permiso para crear tareas en este lead." },
+      { status: 403 },
+    );
+  }
+
   const body = (await request.json().catch(() => null)) as TaskPayload | null;
 
   if (!body || typeof body !== "object") {
