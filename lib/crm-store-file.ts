@@ -58,6 +58,17 @@ export type CrmConversation = {
   transcriptSummary: string;
   handoffRequested: boolean;
   detectedIntent: ChatbotIntent | "consulta_general";
+  provider?: "meta" | "ycloud" | "evolution" | "none";
+  providerRef?: string;
+  contactPhone?: string;
+  assignedTo?: string;
+  isBotEnabled?: boolean;
+  botPausedAt?: string;
+  botPausedBy?: string;
+  humanTakenAt?: string;
+  humanTakenBy?: string;
+  unreadCount?: number;
+  lastMessagePreview?: string;
 };
 
 export type CrmActivity = {
@@ -623,6 +634,14 @@ export async function getCrmSnapshot() {
   return readStore();
 }
 
+export async function clearCrmOperationalData() {
+  await writeStore(defaultStore);
+
+  return {
+    cleared: true,
+  };
+}
+
 export async function searchCrm(query: string): Promise<CrmSearchResults> {
   const store = await readStore();
   const normalizedQuery = normalizeSearchValue(query.trim());
@@ -1085,6 +1104,12 @@ type PersistWhatsAppMessageInput = {
   intent?: ChatbotIntent;
 };
 
+type UpdateConversationControlInput = {
+  conversationId: string;
+  actorUsername: string;
+  action: "take" | "reactivate-bot";
+};
+
 export async function persistWhatsAppMessage({
   from,
   contactName,
@@ -1154,6 +1179,10 @@ export async function persistWhatsAppMessage({
         conversation.leadId === lead.id && conversation.channel === "whatsapp",
     );
 
+    const shouldReply = existingConversation
+      ? existingConversation.isBotEnabled !== false
+      : true;
+
     if (!existingConversation) {
       store.conversations.unshift({
         id: createId("conv"),
@@ -1163,21 +1192,30 @@ export async function persistWhatsAppMessage({
         lastMessageAt: now,
         transcriptSummary: [
           `Cliente: ${message}`,
-          reply ? `Bot: ${reply}` : "",
+          shouldReply && reply ? `Bot: ${reply}` : "",
         ]
           .filter(Boolean)
           .join(" || "),
         handoffRequested: false,
         detectedIntent: intent || "consulta_general",
+        provider: "ycloud",
+        contactPhone: normalizedPhone,
+        isBotEnabled: true,
+        unreadCount: 1,
+        lastMessagePreview: message,
       });
     } else {
       existingConversation.lastMessageAt = now;
       existingConversation.detectedIntent =
         intent || existingConversation.detectedIntent;
+      existingConversation.contactPhone = normalizedPhone;
+      existingConversation.provider = existingConversation.provider || "ycloud";
+      existingConversation.unreadCount = (existingConversation.unreadCount || 0) + 1;
+      existingConversation.lastMessagePreview = message;
       existingConversation.transcriptSummary = [
         existingConversation.transcriptSummary,
         `Cliente: ${message}`,
-        reply ? `Bot: ${reply}` : "",
+        shouldReply && reply ? `Bot: ${reply}` : "",
       ]
         .filter(Boolean)
         .join(" || ");
@@ -1192,7 +1230,7 @@ export async function persistWhatsAppMessage({
       createdBy: "chatbot",
     });
 
-    if (reply) {
+    if (shouldReply && reply) {
       store.activities.unshift({
         id: createId("act"),
         leadId: lead.id,
@@ -1203,6 +1241,70 @@ export async function persistWhatsAppMessage({
       });
     }
 
-    return lead;
+    return {
+      lead,
+      shouldReply,
+      conversation:
+        store.conversations.find(
+          (conversation) =>
+            conversation.leadId === lead.id && conversation.channel === "whatsapp",
+        ) ?? null,
+    };
+  });
+}
+
+export async function updateCrmConversationControl({
+  conversationId,
+  actorUsername,
+  action,
+}: UpdateConversationControlInput) {
+  return updateStore((store) => {
+    const conversation =
+      store.conversations.find((item) => item.id === conversationId) ?? null;
+
+    if (!conversation) {
+      throw new Error("Conversacion no encontrada.");
+    }
+
+    const lead = store.leads.find((item) => item.id === conversation.leadId) ?? null;
+    const now = new Date().toISOString();
+
+    if (action === "take") {
+      conversation.assignedTo = actorUsername;
+      conversation.isBotEnabled = false;
+      conversation.botPausedAt = now;
+      conversation.botPausedBy = actorUsername;
+      conversation.humanTakenAt = now;
+      conversation.humanTakenBy = actorUsername;
+      conversation.unreadCount = 0;
+    }
+
+    if (action === "reactivate-bot") {
+      conversation.isBotEnabled = true;
+      conversation.botPausedAt = "";
+      conversation.botPausedBy = "";
+    }
+
+    if (lead) {
+      lead.updatedAt = now;
+
+      if (action === "take" && (!lead.owner || lead.owner === "Sin asignar")) {
+        lead.owner = actorUsername;
+      }
+
+      store.activities.unshift({
+        id: createId("act"),
+        leadId: lead.id,
+        type: "lead_updated",
+        description:
+          action === "take"
+            ? `${actorUsername} tomo la conversacion y pauso el bot.`
+            : `${actorUsername} reactivo el bot para la conversacion.`,
+        createdAt: now,
+        createdBy: "chatbot",
+      });
+    }
+
+    return conversation;
   });
 }

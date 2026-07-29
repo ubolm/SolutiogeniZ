@@ -370,3 +370,63 @@ export async function updateCrmUser(
 
   return mapCrmUser(result.rows[0]);
 }
+
+export async function deleteCrmUser(
+  id: string,
+  options?: {
+    actorUserId?: string;
+  },
+) {
+  if (!isPostgresConfigured()) {
+    throw new Error("Postgres is not configured.");
+  }
+
+  await ensureCrmUsersSchema();
+
+  if (options?.actorUserId && options.actorUserId === id) {
+    throw new Error("No puedes eliminar tu propio acceso desde esta sesion.");
+  }
+
+  const currentResult = await pgQuery<CrmUserRow>(
+    `
+      SELECT id, username, password_hash, role, is_active, created_at, updated_at
+      FROM crm_users
+      WHERE id = $1
+      LIMIT 1
+    `,
+    [id],
+  );
+
+  const current = currentResult.rows[0];
+
+  if (!current) {
+    throw new Error("Usuario no encontrado.");
+  }
+
+  if (current.role === "admin" && current.is_active) {
+    const adminCountResult = await pgQuery<{ count: string }>(
+      `
+        SELECT COUNT(*)::text AS count
+        FROM crm_users
+        WHERE role = 'admin' AND is_active = TRUE
+      `,
+    );
+
+    const activeAdminCount = Number(adminCountResult.rows[0]?.count || "0");
+
+    if (activeAdminCount <= 1) {
+      throw new Error("No puedes eliminar el ultimo admin activo.");
+    }
+  }
+
+  const result = await pgQuery<CrmUserRow>(
+    `
+      DELETE FROM crm_users
+      WHERE id = $1
+      RETURNING id, username, password_hash, role, is_active, created_at, updated_at
+    `,
+    [id],
+  );
+
+  return mapCrmUser(result.rows[0]);
+}

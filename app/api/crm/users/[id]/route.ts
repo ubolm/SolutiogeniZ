@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 
 import {
-  getCrmSessionCookieName,
-  verifyCrmSessionToken,
   type CrmRole,
 } from "@/lib/crm-auth";
-import { updateCrmUser } from "@/lib/crm-users";
+import {
+  getCrmTokenFromCookieHeader,
+  verifyActiveCrmSessionToken,
+} from "@/lib/crm-session";
+import { deleteCrmUser, updateCrmUser } from "@/lib/crm-users";
 
 type UpdateUserPayload = {
   role?: string;
@@ -14,15 +16,8 @@ type UpdateUserPayload = {
 };
 
 async function requireAdminSession(request: Request) {
-  const token = request.headers
-    .get("cookie")
-    ?.split(";")
-    .map((item) => item.trim())
-    .find((item) => item.startsWith(`${getCrmSessionCookieName()}=`))
-    ?.split("=")
-    .slice(1)
-    .join("=");
-  const session = await verifyCrmSessionToken(token);
+  const token = getCrmTokenFromCookieHeader(request.headers.get("cookie"));
+  const session = await verifyActiveCrmSessionToken(token);
 
   if (!session) {
     return NextResponse.json(
@@ -84,6 +79,35 @@ export async function PATCH(
           error instanceof Error
             ? error.message
             : "No pudimos actualizar el usuario.",
+      },
+      { status: 400 },
+    );
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  context: { params: { id: string } },
+) {
+  const session = await requireAdminSession(request);
+
+  if (session instanceof NextResponse) {
+    return session;
+  }
+
+  try {
+    const user = await deleteCrmUser(context.params.id, {
+      actorUserId: session.userId,
+    });
+
+    return NextResponse.json({ ok: true, user });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "No pudimos eliminar el usuario.",
       },
       { status: 400 },
     );

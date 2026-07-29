@@ -4,8 +4,11 @@ import { crmLeadStatuses, type ChatbotLeadStatus } from "@/lib/chatbot";
 import {
   getCrmRoleCapabilities,
   getCrmSessionCookieName,
-  verifyCrmSessionToken,
 } from "@/lib/crm-auth";
+import {
+  getCrmTokenFromCookieHeader,
+  verifyActiveCrmSessionToken,
+} from "@/lib/crm-session";
 import {
   createCrmLeadActivity,
   getCrmLeadDetailForSession,
@@ -26,15 +29,8 @@ export async function POST(
   request: Request,
   context: { params: { id: string } },
 ) {
-  const token = request.headers
-    .get("cookie")
-    ?.split(";")
-    .map((item) => item.trim())
-    .find((item) => item.startsWith(`${getCrmSessionCookieName()}=`))
-    ?.split("=")
-    .slice(1)
-    .join("=");
-  const session = await verifyCrmSessionToken(token);
+  const token = getCrmTokenFromCookieHeader(request.headers.get("cookie"));
+  const session = await verifyActiveCrmSessionToken(token);
 
   if (!session) {
     return NextResponse.json(

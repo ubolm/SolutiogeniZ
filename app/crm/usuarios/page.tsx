@@ -3,10 +3,8 @@ import { cookies } from "next/headers";
 
 import { CrmPageIntro } from "@/components/crm/CrmPageIntro";
 import { CrmUsersPanel } from "@/components/crm/CrmUsersPanel";
-import {
-  getCrmSessionCookieName,
-  verifyCrmSessionToken,
-} from "@/lib/crm-auth";
+import { getCrmSessionCookieName } from "@/lib/crm-auth";
+import { verifyActiveCrmSessionToken } from "@/lib/crm-session";
 import { getCrmUsers } from "@/lib/crm-users";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function CrmUsersPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get(getCrmSessionCookieName())?.value;
-  const session = await verifyCrmSessionToken(token);
+  const session = await verifyActiveCrmSessionToken(token);
 
   if (!session) {
     redirect("/crm/login?next=%2Fcrm%2Fusuarios");

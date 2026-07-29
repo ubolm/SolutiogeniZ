@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import {
   AlertTriangle,
@@ -104,17 +105,22 @@ function getConversationPriority(
 
 export function ConversationInboxPanel({
   conversations,
+  currentUsername,
   leads,
   role,
 }: {
   conversations: CrmConversation[];
+  currentUsername: string;
   leads: CrmLead[];
   role: CrmRole;
 }) {
+  const router = useRouter();
   const capabilities = getCrmRoleCapabilities(role);
   const [query, setQuery] = useState("");
   const [channelFilter, setChannelFilter] = useState("todos");
   const [priorityFilter, setPriorityFilter] = useState("todos");
+  const [busyConversationId, setBusyConversationId] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
 
   const enrichedConversations = useMemo(() => {
     return conversations
@@ -169,6 +175,8 @@ export function ConversationInboxPanel({
           lead?.name,
           capabilities.canManageOwner ? lead?.owner : "",
           lead?.summary,
+          conversation.humanTakenBy,
+          conversation.isBotEnabled === false ? "bot pausado" : "bot activo",
         ]
           .filter(Boolean)
           .join(" ")
@@ -200,6 +208,42 @@ export function ConversationInboxPanel({
   const handoffCount = conversations.filter(
     (conversation) => conversation.handoffRequested,
   ).length;
+
+  async function updateConversationControl(
+    conversationId: string,
+    action: "take" | "reactivate-bot",
+  ) {
+    setBusyConversationId(conversationId);
+    setMessage("");
+
+    try {
+      const response = await fetch(`/api/crm/conversations/${conversationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+
+      const body = (await response.json().catch(() => null)) as
+        | { ok?: boolean; error?: string }
+        | null;
+
+      if (!response.ok || !body?.ok) {
+        setMessage(body?.error || "No pudimos actualizar la conversacion.");
+        return;
+      }
+
+      setMessage(
+        action === "take"
+          ? "Conversacion tomada. El bot quedo pausado."
+          : "Bot reactivado para esta conversacion.",
+      );
+      router.refresh();
+    } catch {
+      setMessage("No pudimos actualizar la conversacion.");
+    } finally {
+      setBusyConversationId(null);
+    }
+  }
 
   return (
     <section className="grid gap-6">
@@ -272,6 +316,12 @@ export function ConversationInboxPanel({
           </label>
         </div>
 
+        {message ? (
+          <p className="mt-4 rounded-[1rem] border border-[#d9e6ff] bg-[#f5f8ff] px-4 py-3 text-[0.92rem] text-primary-strong">
+            {message}
+          </p>
+        ) : null}
+
         <div className="mt-6 grid gap-3">
           {filteredConversations.length === 0 ? (
             <p className="rounded-[1.3rem] border border-dashed border-white/70 bg-white/45 px-4 py-5 text-[0.95rem] text-muted backdrop-blur-[8px]">
@@ -298,13 +348,30 @@ export function ConversationInboxPanel({
                         <span className="rounded-full border border-white/70 bg-white/58 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
                           {formatIntentLabel(conversation.detectedIntent)}
                         </span>
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${
+                            conversation.isBotEnabled === false
+                              ? "bg-[#fff1dc] text-[#b56a06]"
+                              : "bg-[#eef5e8] text-[#267a2b]"
+                          }`}
+                        >
+                          {conversation.isBotEnabled === false
+                            ? "Bot pausado"
+                            : "Bot activo"}
+                        </span>
                       </div>
                       <p className="mt-3 text-[0.98rem] font-semibold text-ink">
-                        {lead?.company ?? "Lead sin empresa"} · {lead?.name ?? "Sin contacto"}
+                        {lead?.company ?? "Lead sin empresa"} -{" "}
+                        {lead?.name ?? "Sin contacto"}
                       </p>
                       {capabilities.canManageOwner ? (
                         <p className="mt-1 text-[0.82rem] text-muted">
                           Responsable: {lead?.owner || "Sin asignar"}
+                        </p>
+                      ) : null}
+                      {conversation.humanTakenBy ? (
+                        <p className="mt-1 text-[0.82rem] text-muted">
+                          Tomada por: {conversation.humanTakenBy}
                         </p>
                       ) : null}
                     </div>
@@ -338,6 +405,43 @@ export function ConversationInboxPanel({
                         >
                           Abrir lead
                         </Link>
+                      ) : null}
+                      {conversation.channel === "whatsapp" ? (
+                        conversation.isBotEnabled === false ? (
+                          <button
+                            className="inline-flex rounded-full border border-[#d7def0] bg-white px-3.5 py-1.5 text-[0.8rem] font-semibold text-ink transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70"
+                            disabled={busyConversationId === conversation.id}
+                            onClick={() =>
+                              void updateConversationControl(
+                                conversation.id,
+                                "reactivate-bot",
+                              )
+                            }
+                            type="button"
+                          >
+                            {busyConversationId === conversation.id
+                              ? "Actualizando..."
+                              : "Reactivar bot"}
+                          </button>
+                        ) : (
+                          <button
+                            className="inline-flex rounded-full border border-[#d7def0] bg-white px-3.5 py-1.5 text-[0.8rem] font-semibold text-ink transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-70"
+                            disabled={busyConversationId === conversation.id}
+                            onClick={() =>
+                              void updateConversationControl(
+                                conversation.id,
+                                "take",
+                              )
+                            }
+                            type="button"
+                          >
+                            {busyConversationId === conversation.id
+                              ? "Actualizando..."
+                              : conversation.humanTakenBy === currentUsername
+                                ? "Bot pausado por vos"
+                                : "Tomar y pausar bot"}
+                          </button>
+                        )
                       ) : null}
                     </div>
                   </div>
@@ -433,11 +537,15 @@ function PriorityCard({
         : "border-[#d9ebd0] bg-[linear-gradient(180deg,rgba(244,251,239,0.88)_0%,rgba(232,246,224,0.78)_100%)] text-[#267a2b]";
 
   return (
-    <article className={`rounded-[1.45rem] border p-4 shadow-soft backdrop-blur-[10px] ${toneClass}`}>
+    <article
+      className={`rounded-[1.45rem] border p-4 shadow-soft backdrop-blur-[10px] ${toneClass}`}
+    >
       <div className="inline-flex rounded-full bg-white/80 p-2.5">{icon}</div>
       <p className="mt-4 text-[0.98rem] font-medium">{label}</p>
       <p className="mt-1.5 font-heading text-[2rem] font-semibold">{value}</p>
-      <p className="mt-2 text-[0.92rem] leading-6 text-current/80">{description}</p>
+      <p className="mt-2 text-[0.92rem] leading-6 text-current/80">
+        {description}
+      </p>
     </article>
   );
 }

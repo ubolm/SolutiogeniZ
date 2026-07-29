@@ -2,10 +2,8 @@ import { cookies } from "next/headers";
 
 import { CrmPageIntro } from "@/components/crm/CrmPageIntro";
 import { TaskInboxBoard } from "@/components/crm/TaskInboxBoard";
-import {
-  getCrmSessionCookieName,
-  verifyCrmSessionToken,
-} from "@/lib/crm-auth";
+import { getCrmSessionCookieName } from "@/lib/crm-auth";
+import { verifyActiveCrmSessionToken } from "@/lib/crm-session";
 import { getCrmSnapshot, scopeCrmSnapshotToSession } from "@/lib/crm-store";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function CrmTasksPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get(getCrmSessionCookieName())?.value;
-  const session = await verifyCrmSessionToken(token);
+  const session = await verifyActiveCrmSessionToken(token);
   const role = session?.role ?? "vendedor";
   const snapshot = scopeCrmSnapshotToSession(await getCrmSnapshot(), session);
   const pendingTasks = snapshot.tasks.filter((task) => task.status === "pendiente");

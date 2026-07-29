@@ -2,10 +2,8 @@ import { cookies } from "next/headers";
 
 import { CrmPageIntro } from "@/components/crm/CrmPageIntro";
 import { ConversationInboxPanel } from "@/components/crm/ConversationInboxPanel";
-import {
-  getCrmSessionCookieName,
-  verifyCrmSessionToken,
-} from "@/lib/crm-auth";
+import { getCrmSessionCookieName } from "@/lib/crm-auth";
+import { verifyActiveCrmSessionToken } from "@/lib/crm-session";
 import {
   getCrmSnapshot,
   scopeCrmSnapshotToSession,
@@ -17,7 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function CrmConversationsPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get(getCrmSessionCookieName())?.value;
-  const session = await verifyCrmSessionToken(token);
+  const session = await verifyActiveCrmSessionToken(token);
   const role = session?.role ?? "vendedor";
   const snapshot = scopeCrmSnapshotToSession(await getCrmSnapshot(), session);
   const webCount = snapshot.conversations.filter(
@@ -51,6 +49,7 @@ export default async function CrmConversationsPage() {
 
       <ConversationInboxPanel
         conversations={snapshot.conversations}
+        currentUsername={session?.username ?? ""}
         leads={snapshot.leads}
         role={role}
       />

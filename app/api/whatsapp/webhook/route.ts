@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     messages.map(async (message) => {
       const chatbotResponse = buildChatbotResponse(message.text);
 
-      await persistWhatsAppMessage({
+      const persistence = await persistWhatsAppMessage({
         from: message.from,
         contactName: message.profileName,
         message: message.text,
@@ -75,10 +75,12 @@ export async function POST(request: Request) {
         intent: chatbotResponse.intent,
       });
 
-      await sendWhatsAppTextMessage({
-        to: message.from,
-        body: chatbotResponse.reply,
-      });
+      if (persistence.shouldReply) {
+        await sendWhatsAppTextMessage({
+          to: message.from,
+          body: chatbotResponse.reply,
+        });
+      }
     }),
   );
 

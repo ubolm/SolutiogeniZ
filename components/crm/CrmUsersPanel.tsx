@@ -160,6 +160,60 @@ export function CrmUsersPanel({
     }
   }
 
+  async function deleteSelectedUser() {
+    if (!selectedUser) {
+      setError("Selecciona un usuario para eliminar.");
+      setSuccess("");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Vas a eliminar el usuario ${selectedUser.username}. Esta accion no se puede deshacer. ¿Quieres continuar?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setBusyId(selectedUser.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await fetch(`/api/crm/users/${selectedUser.id}`, {
+        method: "DELETE",
+      });
+
+      const body = (await response.json().catch(() => null)) as
+        | { ok?: boolean; error?: string; user?: CrmUserSummary }
+        | null;
+
+      if (!response.ok || !body?.ok || !body.user) {
+        setError(body?.error || "No pudimos eliminar el usuario.");
+        return;
+      }
+
+      setUsers((current) =>
+        current.filter((item) => item.id !== selectedUser.id),
+      );
+      setSelectedUserId((current) => {
+        if (current !== selectedUser.id) {
+          return current;
+        }
+
+        const remainingUser = users.find((item) => item.id !== selectedUser.id);
+        return remainingUser?.id ?? null;
+      });
+      setPasswordDraft("");
+      setPasswordConfirm("");
+      setSuccess(`Usuario eliminado: ${body.user.username}.`);
+    } catch {
+      setError("No pudimos eliminar el usuario.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_22rem]">
       <section className="overflow-hidden rounded-[1.6rem] border border-[#e5ebf5] bg-white">
@@ -401,6 +455,26 @@ export function CrmUsersPanel({
                 : "Guardar nueva clave"}
             </button>
           </form>
+        </div>
+
+        <div className="mt-5 rounded-[1.2rem] border border-[#ffe3e3] bg-[#fff7f7] px-4 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#b42318]">
+            Eliminar usuario
+          </p>
+          <p className="mt-2 text-sm leading-6 text-[#7a3131]">
+            Borra definitivamente el acceso seleccionado. No podrás eliminar tu propia
+            sesión activa ni dejar al CRM sin un admin activo.
+          </p>
+          <button
+            className="mt-4 inline-flex min-h-11 items-center justify-center rounded-[1rem] border border-[#f2b3b3] bg-white px-5 py-3 text-sm font-semibold text-[#b42318] transition hover:bg-[#fff1f1] disabled:cursor-not-allowed disabled:opacity-70"
+            disabled={!selectedUser || busyId === selectedUser.id}
+            onClick={() => void deleteSelectedUser()}
+            type="button"
+          >
+            {selectedUser && busyId === selectedUser.id
+              ? "Eliminando..."
+              : "Eliminar usuario seleccionado"}
+          </button>
         </div>
       </aside>
     </div>

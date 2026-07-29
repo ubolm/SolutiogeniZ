@@ -187,6 +187,7 @@ export function getCrmAllowedPathPrefixes(role: CrmRole) {
     "/crm/tareas",
     "/crm/busqueda",
     "/api/crm/leads",
+    "/api/crm/conversations",
   ];
 }
 

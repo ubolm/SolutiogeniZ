@@ -5,10 +5,8 @@ import { ArrowLeft } from "lucide-react";
 
 import { LeadDetailWorkspace } from "@/components/crm/LeadDetailWorkspace";
 import type { ChatbotLeadStatus } from "@/lib/chatbot";
-import {
-  getCrmSessionCookieName,
-  verifyCrmSessionToken,
-} from "@/lib/crm-auth";
+import { getCrmSessionCookieName } from "@/lib/crm-auth";
+import { verifyActiveCrmSessionToken } from "@/lib/crm-session";
 import { getCrmLeadDetailForSession } from "@/lib/crm-store";
 import { getAssignableCrmUsers } from "@/lib/crm-users";
 
@@ -46,7 +44,7 @@ export default async function CrmLeadDetailPage({
 }) {
   const cookieStore = await cookies();
   const token = cookieStore.get(getCrmSessionCookieName())?.value;
-  const session = await verifyCrmSessionToken(token);
+  const session = await verifyActiveCrmSessionToken(token);
   const detail = await getCrmLeadDetailForSession(params.id, session);
 
   if (!detail) {

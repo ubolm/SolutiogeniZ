@@ -8,8 +8,8 @@ import { ManualLeadForm } from "@/components/crm/ManualLeadForm";
 import {
   getCrmRoleCapabilities,
   getCrmSessionCookieName,
-  verifyCrmSessionToken,
 } from "@/lib/crm-auth";
+import { verifyActiveCrmSessionToken } from "@/lib/crm-session";
 import { getCrmSnapshot, scopeCrmSnapshotToSession } from "@/lib/crm-store";
 import { getAssignableCrmUsers } from "@/lib/crm-users";
 
@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 export default async function CrmLeadsPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get(getCrmSessionCookieName())?.value;
-  const session = await verifyCrmSessionToken(token);
+  const session = await verifyActiveCrmSessionToken(token);
   const role = session?.role ?? "vendedor";
   const capabilities = getCrmRoleCapabilities(role);
   const snapshot = scopeCrmSnapshotToSession(await getCrmSnapshot(), session);

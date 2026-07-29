@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 
 import {
-  crmImportSampleRows,
   crmImportTemplateHeaders,
   getImportRowIssues,
   mapCsvRows,
@@ -19,10 +18,7 @@ type ImportStatus =
   | { kind: "error"; message: string };
 
 function downloadTemplate() {
-  const csv = [
-    crmImportTemplateHeaders.join(","),
-    ...crmImportSampleRows.map((row) => row.join(",")),
-  ].join("\n");
+  const csv = [crmImportTemplateHeaders.join(",")].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

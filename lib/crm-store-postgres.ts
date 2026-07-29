@@ -97,6 +97,13 @@ type PersistWhatsAppMessageInput = {
   intent?: ChatbotIntent;
 };
 
+type UpdateConversationControlInput = {
+  conversationId: string;
+  actorUsername: string;
+  actorUserId?: string;
+  action: "take" | "reactivate-bot";
+};
+
 type LeadRow = {
   id: string;
   created_at: string | Date;
@@ -128,6 +135,17 @@ type ConversationRow = {
   transcript_summary: string;
   handoff_requested: boolean;
   detected_intent: string;
+  provider?: string;
+  provider_ref?: string;
+  contact_phone?: string;
+  assigned_user_id?: string | null;
+  is_bot_enabled?: boolean;
+  bot_paused_at?: string | Date | null;
+  bot_paused_by_user_id?: string | null;
+  human_taken_at?: string | Date | null;
+  human_taken_by_user_id?: string | null;
+  unread_count?: number;
+  last_message_preview?: string;
 };
 
 type ActivityRow = {
@@ -313,6 +331,17 @@ function mapConversation(row: ConversationRow): CrmConversation {
     transcriptSummary: row.transcript_summary,
     handoffRequested: row.handoff_requested,
     detectedIntent: row.detected_intent as ChatbotIntent | "consulta_general",
+    provider: (row.provider as CrmConversation["provider"]) || "ycloud",
+    providerRef: row.provider_ref || "",
+    contactPhone: row.contact_phone || "",
+    assignedTo: row.assigned_user_id || undefined,
+    isBotEnabled: row.is_bot_enabled ?? true,
+    botPausedAt: row.bot_paused_at ? toIsoString(row.bot_paused_at) : undefined,
+    botPausedBy: row.bot_paused_by_user_id || undefined,
+    humanTakenAt: row.human_taken_at ? toIsoString(row.human_taken_at) : undefined,
+    humanTakenBy: row.human_taken_by_user_id || undefined,
+    unreadCount: row.unread_count ?? 0,
+    lastMessagePreview: row.last_message_preview || "",
   };
 }
 
@@ -717,8 +746,10 @@ async function insertConversation(client: PgClient, conversation: CrmConversatio
     `
       INSERT INTO crm_conversations (
         id, lead_id, channel, started_at, last_message_at, transcript_summary,
-        handoff_requested, detected_intent
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        handoff_requested, detected_intent, provider, provider_ref, contact_phone,
+        assigned_user_id, is_bot_enabled, bot_paused_at, bot_paused_by_user_id,
+        human_taken_at, human_taken_by_user_id, unread_count, last_message_preview
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
     `,
     [
       conversation.id,
@@ -729,6 +760,17 @@ async function insertConversation(client: PgClient, conversation: CrmConversatio
       conversation.transcriptSummary,
       conversation.handoffRequested,
       conversation.detectedIntent,
+      conversation.provider || "ycloud",
+      conversation.providerRef || "",
+      conversation.contactPhone || "",
+      conversation.assignedTo || null,
+      conversation.isBotEnabled ?? true,
+      conversation.botPausedAt || null,
+      conversation.botPausedBy || null,
+      conversation.humanTakenAt || null,
+      conversation.humanTakenBy || null,
+      conversation.unreadCount ?? 0,
+      conversation.lastMessagePreview || "",
     ],
   );
 }
@@ -871,13 +913,26 @@ async function upsertConversationRecord(client: PgClient, conversation: CrmConve
     `
       INSERT INTO crm_conversations (
         id, lead_id, channel, started_at, last_message_at, transcript_summary,
-        handoff_requested, detected_intent
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        handoff_requested, detected_intent, provider, provider_ref, contact_phone,
+        assigned_user_id, is_bot_enabled, bot_paused_at, bot_paused_by_user_id,
+        human_taken_at, human_taken_by_user_id, unread_count, last_message_preview
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
       ON CONFLICT (id) DO UPDATE SET
         last_message_at = EXCLUDED.last_message_at,
         transcript_summary = EXCLUDED.transcript_summary,
         handoff_requested = EXCLUDED.handoff_requested,
-        detected_intent = EXCLUDED.detected_intent
+        detected_intent = EXCLUDED.detected_intent,
+        provider = EXCLUDED.provider,
+        provider_ref = EXCLUDED.provider_ref,
+        contact_phone = EXCLUDED.contact_phone,
+        assigned_user_id = EXCLUDED.assigned_user_id,
+        is_bot_enabled = EXCLUDED.is_bot_enabled,
+        bot_paused_at = EXCLUDED.bot_paused_at,
+        bot_paused_by_user_id = EXCLUDED.bot_paused_by_user_id,
+        human_taken_at = EXCLUDED.human_taken_at,
+        human_taken_by_user_id = EXCLUDED.human_taken_by_user_id,
+        unread_count = EXCLUDED.unread_count,
+        last_message_preview = EXCLUDED.last_message_preview
     `,
     [
       conversation.id,
@@ -888,8 +943,29 @@ async function upsertConversationRecord(client: PgClient, conversation: CrmConve
       conversation.transcriptSummary,
       conversation.handoffRequested,
       conversation.detectedIntent,
+      conversation.provider || "ycloud",
+      conversation.providerRef || "",
+      conversation.contactPhone || "",
+      conversation.assignedTo || null,
+      conversation.isBotEnabled ?? true,
+      conversation.botPausedAt || null,
+      conversation.botPausedBy || null,
+      conversation.humanTakenAt || null,
+      conversation.humanTakenBy || null,
+      conversation.unreadCount ?? 0,
+      conversation.lastMessagePreview || "",
     ],
   );
+}
+
+async function getConversationById(client: PgClient, id: string) {
+  const result = await pgTxQuery<ConversationRow>(
+    client,
+    "SELECT * FROM crm_conversations WHERE id = $1 LIMIT 1",
+    [id],
+  );
+
+  return result.rows[0] ? mapConversation(result.rows[0]) : null;
 }
 
 async function createActivity(
@@ -931,6 +1007,30 @@ export async function getCrmSnapshotPostgres() {
     conversations: conversationsResult.rows.map(mapConversation),
     activities: activitiesResult.rows.map(mapActivity),
     tasks: tasksResult.rows.map(mapTask),
+  };
+}
+
+export async function clearCrmOperationalDataPostgres() {
+  await ensureCrmSchema();
+
+  await withPgTransaction(async (client) => {
+    await pgTxQuery(
+      client,
+      `
+        TRUNCATE TABLE
+          crm_messages,
+          crm_conversation_events,
+          crm_tasks,
+          crm_activities,
+          crm_conversations,
+          crm_leads
+        RESTART IDENTITY CASCADE
+      `,
+    );
+  });
+
+  return {
+    cleared: true,
   };
 }
 
@@ -1607,15 +1707,19 @@ export async function persistWhatsAppMessagePostgres({
       "whatsapp",
     );
 
+    const shouldReply = existingConversation
+      ? existingConversation.isBotEnabled !== false
+      : true;
+
     const transcriptSummary = existingConversation
       ? [
           existingConversation.transcriptSummary,
           `Cliente: ${message}`,
-          reply ? `Bot: ${reply}` : "",
+          shouldReply && reply ? `Bot: ${reply}` : "",
         ]
           .filter(Boolean)
           .join(" || ")
-      : [`Cliente: ${message}`, reply ? `Bot: ${reply}` : ""]
+      : [`Cliente: ${message}`, shouldReply && reply ? `Bot: ${reply}` : ""]
           .filter(Boolean)
           .join(" || ");
 
@@ -1625,6 +1729,10 @@ export async function persistWhatsAppMessagePostgres({
           lastMessageAt: now,
           transcriptSummary,
           detectedIntent: intent || existingConversation.detectedIntent,
+          provider: existingConversation.provider || "ycloud",
+          contactPhone: normalizedPhone,
+          unreadCount: (existingConversation.unreadCount ?? 0) + 1,
+          lastMessagePreview: message,
         }
       : {
           id: createId("conv"),
@@ -1635,6 +1743,11 @@ export async function persistWhatsAppMessagePostgres({
           transcriptSummary,
           handoffRequested: false,
           detectedIntent: intent || "consulta_general",
+          provider: "ycloud",
+          contactPhone: normalizedPhone,
+          isBotEnabled: true,
+          unreadCount: 1,
+          lastMessagePreview: message,
         };
 
     await upsertConversationRecord(client, conversation);
@@ -1646,7 +1759,7 @@ export async function persistWhatsAppMessagePostgres({
       now,
     );
 
-    if (reply) {
+    if (shouldReply && reply) {
       await createActivity(
         client,
         lead.id,
@@ -1656,6 +1769,98 @@ export async function persistWhatsAppMessagePostgres({
       );
     }
 
-    return lead;
+    return {
+      lead,
+      conversation,
+      shouldReply,
+    };
+  });
+}
+
+export async function updateCrmConversationControlPostgres({
+  conversationId,
+  actorUsername,
+  actorUserId,
+  action,
+}: UpdateConversationControlInput) {
+  await ensureCrmSchema();
+
+  return withPgTransaction(async (client) => {
+    const conversation = await getConversationById(client, conversationId);
+
+    if (!conversation) {
+      throw new Error("Conversacion no encontrada.");
+    }
+
+    const lead = await getLeadById(client, conversation.leadId);
+    const now = new Date().toISOString();
+    const nextConversation: CrmConversation = { ...conversation };
+
+    if (action === "take") {
+      nextConversation.assignedTo = actorUsername;
+      nextConversation.isBotEnabled = false;
+      nextConversation.botPausedAt = now;
+      nextConversation.botPausedBy = actorUsername;
+      nextConversation.humanTakenAt = now;
+      nextConversation.humanTakenBy = actorUsername;
+      nextConversation.unreadCount = 0;
+    }
+
+    if (action === "reactivate-bot") {
+      nextConversation.isBotEnabled = true;
+      nextConversation.botPausedAt = undefined;
+      nextConversation.botPausedBy = undefined;
+    }
+
+    await pgTxQuery(
+      client,
+      `
+        UPDATE crm_conversations
+        SET
+          assigned_user_id = $2,
+          is_bot_enabled = $3,
+          bot_paused_at = $4,
+          bot_paused_by_user_id = $5,
+          human_taken_at = $6,
+          human_taken_by_user_id = $7,
+          unread_count = $8
+        WHERE id = $1
+      `,
+      [
+        conversationId,
+        action === "take" ? actorUserId ?? null : conversation.assignedTo || null,
+        nextConversation.isBotEnabled ?? true,
+        nextConversation.botPausedAt || null,
+        action === "take" ? actorUserId ?? null : null,
+        nextConversation.humanTakenAt || null,
+        action === "take"
+          ? actorUserId ?? null
+          : nextConversation.humanTakenBy || null,
+        nextConversation.unreadCount ?? 0,
+      ],
+    );
+
+    if (lead) {
+      const nextLead: CrmLead = {
+        ...lead,
+        updatedAt: now,
+        owner:
+          action === "take" && (!lead.owner || lead.owner === "Sin asignar")
+            ? actorUsername
+            : lead.owner,
+      };
+      await updateLeadRecord(client, nextLead);
+      await createActivity(
+        client,
+        lead.id,
+        "lead_updated",
+        action === "take"
+          ? `${actorUsername} tomo la conversacion y pauso el bot.`
+          : `${actorUsername} reactivo el bot para la conversacion.`,
+        now,
+      );
+    }
+
+    return nextConversation;
   });
 }

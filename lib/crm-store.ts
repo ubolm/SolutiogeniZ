@@ -6,6 +6,7 @@ import type {
 } from "@/lib/chatbot";
 import type { ChatbotLeadFormState } from "@/lib/chatbot-lead";
 import {
+  clearCrmOperationalData as clearCrmOperationalDataFile,
   createCrmLeadActivity as createCrmLeadActivityFile,
   createCrmTask as createCrmTaskFile,
   createManualCrmLead as createManualCrmLeadFile,
@@ -13,6 +14,7 @@ import {
   persistChatbotLead as persistChatbotLeadFile,
   persistWebChatMessage as persistWebChatMessageFile,
   persistWhatsAppMessage as persistWhatsAppMessageFile,
+  updateCrmConversationControl as updateCrmConversationControlFile,
   updateCrmLead as updateCrmLeadFile,
   updateCrmTask as updateCrmTaskFile,
   type CrmActivity,
@@ -21,6 +23,7 @@ import {
   type CrmTask,
 } from "@/lib/crm-store-file";
 import {
+  clearCrmOperationalDataPostgres,
   createCrmLeadActivityPostgres,
   createCrmTaskPostgres,
   createManualCrmLeadPostgres,
@@ -28,6 +31,7 @@ import {
   persistChatbotLeadPostgres,
   persistWebChatMessagePostgres,
   persistWhatsAppMessagePostgres,
+  updateCrmConversationControlPostgres,
   updateCrmLeadPostgres,
   updateCrmTaskPostgres,
 } from "@/lib/crm-store-postgres";
@@ -129,6 +133,13 @@ type PersistWhatsAppMessageInput = {
   intent?: ChatbotIntent;
 };
 
+type UpdateConversationControlInput = {
+  conversationId: string;
+  actorUsername: string;
+  actorUserId?: string;
+  action: "take" | "reactivate-bot";
+};
+
 function normalizeSearchValue(value: string) {
   return value
     .normalize("NFD")
@@ -163,6 +174,12 @@ async function readBackendSnapshot() {
 
 export async function getCrmSnapshot() {
   return readBackendSnapshot();
+}
+
+export async function clearCrmOperationalData() {
+  return isPostgresConfigured()
+    ? clearCrmOperationalDataPostgres()
+    : clearCrmOperationalDataFile();
 }
 
 function normalizeOwner(value: string | undefined) {
@@ -454,4 +471,12 @@ export async function persistWhatsAppMessage(
   return isPostgresConfigured()
     ? persistWhatsAppMessagePostgres(input)
     : persistWhatsAppMessageFile(input);
+}
+
+export async function updateCrmConversationControl(
+  input: UpdateConversationControlInput,
+) {
+  return isPostgresConfigured()
+    ? updateCrmConversationControlPostgres(input)
+    : updateCrmConversationControlFile(input);
 }
