@@ -4,12 +4,14 @@ const SESSION_DURATION_SECONDS = 60 * 60 * 12;
 export type CrmRole = "admin" | "vendedor";
 
 export type CrmSessionPayload = {
+  userId?: string;
   username: string;
   role: CrmRole;
   exp: number;
 };
 
 type CrmIdentity = {
+  id?: string;
   username: string;
   role: CrmRole;
 };
@@ -40,6 +42,10 @@ function getConfig() {
   return {
     secret,
   };
+}
+
+export function isCrmEnvFallbackAllowed() {
+  return process.env.CRM_AUTH_ALLOW_ENV_FALLBACK?.trim() === "true";
 }
 
 function toBase64Url(value: string | Uint8Array) {
@@ -208,6 +214,7 @@ export async function createCrmSessionToken(identity: CrmIdentity) {
   }
 
   const payload: CrmSessionPayload = {
+    userId: identity.id,
     username: identity.username,
     role: identity.role,
     exp: Math.floor(Date.now() / 1000) + SESSION_DURATION_SECONDS,

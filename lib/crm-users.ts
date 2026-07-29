@@ -196,6 +196,42 @@ export async function resolveCrmIdentityFromDatabase(
   } satisfies CrmUserIdentity;
 }
 
+export async function getActiveCrmIdentityByUsername(username: string) {
+  if (!isPostgresConfigured()) {
+    return null;
+  }
+
+  await ensureCrmUsersSchema();
+
+  const normalizedUsername = username.trim().toLowerCase();
+
+  if (!normalizedUsername) {
+    return null;
+  }
+
+  const result = await pgQuery<CrmUserRow>(
+    `
+      SELECT id, username, password_hash, role, is_active
+      FROM crm_users
+      WHERE username = $1
+      LIMIT 1
+    `,
+    [normalizedUsername],
+  );
+
+  const user = result.rows[0];
+
+  if (!user || !user.is_active) {
+    return null;
+  }
+
+  return {
+    id: user.id,
+    username: user.username,
+    role: user.role,
+  } satisfies CrmUserIdentity;
+}
+
 export async function getCrmUsers() {
   if (!isPostgresConfigured()) {
     return [];

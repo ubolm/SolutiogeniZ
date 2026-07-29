@@ -5,6 +5,7 @@ import {
   createCrmSessionToken,
   getCrmSessionCookieName,
   getCrmSessionMaxAge,
+  isCrmEnvFallbackAllowed,
   isCrmAuthConfigured,
   resolveCrmIdentityFromEnv,
 } from "@/lib/crm-auth";
@@ -47,9 +48,15 @@ export async function POST(request: Request) {
   const username = String(body.username ?? "").trim();
   const password = String(body.password ?? "").trim();
 
+  const databaseIdentity = await resolveCrmIdentityFromDatabase(
+    username,
+    password,
+  );
   const identity =
-    (await resolveCrmIdentityFromDatabase(username, password)) ??
-    resolveCrmIdentityFromEnv(username, password);
+    databaseIdentity ??
+    (isCrmEnvFallbackAllowed()
+      ? resolveCrmIdentityFromEnv(username, password)
+      : null);
 
   if (!identity) {
     return NextResponse.json(
