@@ -30,6 +30,8 @@ Crear un archivo `.env.local` basado en `.env.example`.
 ```bash
 CONTACT_TO_EMAIL=
 N8N_LEAD_WEBHOOK_URL=
+N8N_CRM_EVENTS_WEBHOOK_URL=
+N8N_CRM_EVENTS_WEBHOOK_SECRET=
 NEXT_PUBLIC_BOOKING_URL=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 RESEND_API_KEY=
@@ -39,6 +41,8 @@ POSTGRES_SSL=false
 
 - `CONTACT_TO_EMAIL`: correo que recibirá las consultas del formulario de contacto.
 - `N8N_LEAD_WEBHOOK_URL`: URL privada del webhook de n8n para recibir diagnósticos progresivos. No se expone en el cliente.
+- `N8N_CRM_EVENTS_WEBHOOK_URL`: URL privada del webhook de n8n para recibir eventos internos del CRM, por ejemplo mensajes entrantes de WhatsApp.
+- `N8N_CRM_EVENTS_WEBHOOK_SECRET`: secreto opcional enviado en el header `x-sgz-crm-secret` para validar el origen del evento.
 - `NEXT_PUBLIC_BOOKING_URL`: enlace externo para agendar reuniones. Si queda vacío, los CTAs llevan al formulario.
 - `NEXT_PUBLIC_SITE_URL`: URL pública del sitio para metadata, sitemap y robots.
 - `RESEND_API_KEY`: clave opcional para enviar correos con Resend.
@@ -116,6 +120,8 @@ Variables recomendadas en producciÃ³n:
 ```bash
 CONTACT_TO_EMAIL=
 N8N_LEAD_WEBHOOK_URL=
+N8N_CRM_EVENTS_WEBHOOK_URL=
+N8N_CRM_EVENTS_WEBHOOK_SECRET=
 NEXT_PUBLIC_BOOKING_URL=
 NEXT_PUBLIC_SITE_URL=
 RESEND_API_KEY=

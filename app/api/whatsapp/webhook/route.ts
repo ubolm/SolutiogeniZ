@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { emitWhatsAppInboundAutomationEvent } from "@/lib/crm-automation";
 import { buildChatbotResponse } from "@/lib/chatbot-engine";
 import { persistWhatsAppMessage } from "@/lib/crm-store";
 import {
@@ -80,6 +81,23 @@ export async function POST(request: Request) {
           to: message.from,
           body: chatbotResponse.reply,
         });
+      }
+
+      try {
+        await emitWhatsAppInboundAutomationEvent({
+          provider: getWhatsAppProvider(),
+          from: message.from,
+          profileName: message.profileName,
+          message: message.text,
+          detectedInterest: chatbotResponse.interest,
+          intent: chatbotResponse.intent,
+          lead: persistence.lead,
+          conversation: persistence.conversation,
+          shouldReply: persistence.shouldReply,
+          reply: persistence.shouldReply ? chatbotResponse.reply : undefined,
+        });
+      } catch (error) {
+        console.error("CRM automation webhook failed", error);
       }
     }),
   );
