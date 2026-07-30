@@ -27,8 +27,17 @@ export async function middleware(request: NextRequest) {
   const isLoginPage = pathname === "/crm/login";
   const isCrmPage = pathname.startsWith("/crm");
   const isCrmApi = pathname.startsWith("/api/crm");
+  const isAutomationInboundApi = pathname.startsWith(
+    "/api/crm/automation/inbound",
+  );
 
   if (!isCrmPage && !isCrmApi) {
+    return NextResponse.next();
+  }
+
+  // This webhook is authenticated with a shared secret inside the route itself,
+  // so it must bypass the cookie-based CRM middleware.
+  if (isAutomationInboundApi) {
     return NextResponse.next();
   }
 

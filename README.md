@@ -32,6 +32,7 @@ CONTACT_TO_EMAIL=
 N8N_LEAD_WEBHOOK_URL=
 N8N_CRM_EVENTS_WEBHOOK_URL=
 N8N_CRM_EVENTS_WEBHOOK_SECRET=
+N8N_CRM_INBOUND_SECRET=
 NEXT_PUBLIC_BOOKING_URL=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 RESEND_API_KEY=
@@ -43,6 +44,7 @@ POSTGRES_SSL=false
 - `N8N_LEAD_WEBHOOK_URL`: URL privada del webhook de n8n para recibir diagnósticos progresivos. No se expone en el cliente.
 - `N8N_CRM_EVENTS_WEBHOOK_URL`: URL privada del webhook de n8n para recibir eventos internos del CRM, por ejemplo mensajes entrantes de WhatsApp.
 - `N8N_CRM_EVENTS_WEBHOOK_SECRET`: secreto opcional enviado en el header `x-sgz-crm-secret` para validar el origen del evento.
+- `N8N_CRM_INBOUND_SECRET`: secreto que n8n debe enviar al CRM cuando quiera ejecutar acciones internas como actualizar un lead, crear una actividad o crear una tarea.
 - `NEXT_PUBLIC_BOOKING_URL`: enlace externo para agendar reuniones. Si queda vacío, los CTAs llevan al formulario.
 - `NEXT_PUBLIC_SITE_URL`: URL pública del sitio para metadata, sitemap y robots.
 - `RESEND_API_KEY`: clave opcional para enviar correos con Resend.
@@ -122,6 +124,7 @@ CONTACT_TO_EMAIL=
 N8N_LEAD_WEBHOOK_URL=
 N8N_CRM_EVENTS_WEBHOOK_URL=
 N8N_CRM_EVENTS_WEBHOOK_SECRET=
+N8N_CRM_INBOUND_SECRET=
 NEXT_PUBLIC_BOOKING_URL=
 NEXT_PUBLIC_SITE_URL=
 RESEND_API_KEY=

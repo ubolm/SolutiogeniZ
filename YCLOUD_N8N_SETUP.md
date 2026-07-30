@@ -23,6 +23,7 @@ YCLOUD_WHATSAPP_FROM=
 YCLOUD_WEBHOOK_SECRET=
 N8N_CRM_EVENTS_WEBHOOK_URL=
 N8N_CRM_EVENTS_WEBHOOK_SECRET=
+N8N_CRM_INBOUND_SECRET=
 ```
 
 - `YCLOUD_API_KEY`: API key de YCloud.
@@ -30,6 +31,7 @@ N8N_CRM_EVENTS_WEBHOOK_SECRET=
 - `YCLOUD_WEBHOOK_SECRET`: secret de firma del endpoint webhook en YCloud.
 - `N8N_CRM_EVENTS_WEBHOOK_URL`: webhook privado de n8n que recibira eventos internos del CRM.
 - `N8N_CRM_EVENTS_WEBHOOK_SECRET`: secreto opcional enviado por el CRM en el header `x-sgz-crm-secret`.
+- `N8N_CRM_INBOUND_SECRET`: secreto que n8n debe enviar al CRM para ejecutar acciones internas de seguimiento.
 
 ## Flujo recomendado
 
@@ -181,6 +183,68 @@ Header opcional para validar origen:
 x-sgz-crm-secret: tu-secreto
 ```
 
+## Salida de n8n hacia el CRM
+
+Ruta segura disponible en el CRM:
+
+```text
+POST https://solutiogeniz.com/api/crm/automation/inbound
+```
+
+Header requerido:
+
+```text
+x-sgz-crm-secret: tu-secreto-de-entrada
+Content-Type: application/json
+```
+
+Acciones disponibles hoy:
+
+### 1. Actualizar un lead
+
+```json
+{
+  "action": "update_lead",
+  "leadId": "lead_xxx",
+  "status": "respondio",
+  "owner": "xime",
+  "nextActionAt": "2026-07-31T15:00:00.000Z",
+  "notes": "Lead priorizado desde n8n",
+  "customerContext": {
+    "detectedProblems": "No responden rapido en WhatsApp"
+  },
+  "extendedProfile": {
+    "sector": "Barberia",
+    "locality": "CABA"
+  }
+}
+```
+
+### 2. Crear una actividad
+
+```json
+{
+  "action": "create_activity",
+  "leadId": "lead_xxx",
+  "description": "n8n detecto interes alto y dejo seguimiento sugerido.",
+  "kind": "note",
+  "nextActionAt": "2026-07-31T15:00:00.000Z",
+  "status": "respondio"
+}
+```
+
+### 3. Crear una tarea
+
+```json
+{
+  "action": "create_task",
+  "leadId": "lead_xxx",
+  "title": "Llamar al lead por interes alto",
+  "type": "llamada",
+  "dueAt": "2026-07-31T15:00:00.000Z"
+}
+```
+
 Flujo 2:
 
 - revisar leads sin respuesta;
@@ -197,7 +261,8 @@ Flujo 2:
 5. validar que entra un mensaje real al CRM.
 6. validar que la respuesta automatica sale por YCloud.
 7. validar que n8n recibe el evento interno del CRM.
-8. recien ahi agregar reglas reales de automatizacion.
+8. desde n8n devolver al CRM al menos una accion real: actividad, tarea o cambio de estado.
+9. recien ahi agregar reglas reales de automatizacion mas ricas.
 
 ## Siguiente paso tecnico recomendado
 
