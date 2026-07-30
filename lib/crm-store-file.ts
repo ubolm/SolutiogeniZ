@@ -8,6 +8,7 @@ import type {
   ChatbotSource,
 } from "@/lib/chatbot";
 import type { ChatbotLeadFormState } from "@/lib/chatbot-lead";
+import { isWhatsAppAutoReplyEnabled } from "@/lib/whatsapp";
 
 export type CrmLead = {
   id: string;
@@ -1121,6 +1122,7 @@ export async function persistWhatsAppMessage({
   return updateStore((store) => {
     const now = new Date().toISOString();
     const normalizedPhone = from.trim();
+    const autoReplyEnabled = isWhatsAppAutoReplyEnabled();
 
     let lead = store.leads.find((item) => item.phone === normalizedPhone);
 
@@ -1180,8 +1182,8 @@ export async function persistWhatsAppMessage({
     );
 
     const shouldReply = existingConversation
-      ? existingConversation.isBotEnabled !== false
-      : true;
+      ? autoReplyEnabled && existingConversation.isBotEnabled !== false
+      : autoReplyEnabled;
 
     if (!existingConversation) {
       store.conversations.unshift({
@@ -1200,7 +1202,7 @@ export async function persistWhatsAppMessage({
         detectedIntent: intent || "consulta_general",
         provider: "ycloud",
         contactPhone: normalizedPhone,
-        isBotEnabled: true,
+        isBotEnabled: autoReplyEnabled,
         unreadCount: 1,
         lastMessagePreview: message,
       });

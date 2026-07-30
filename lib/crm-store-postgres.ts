@@ -14,6 +14,7 @@ import {
   type CrmLead,
   type CrmTask,
 } from "@/lib/crm-store-file";
+import { isWhatsAppAutoReplyEnabled } from "@/lib/whatsapp";
 import {
   isPostgresConfigured,
   pgQuery,
@@ -1649,6 +1650,7 @@ export async function persistWhatsAppMessagePostgres({
   return withPgTransaction(async (client) => {
     const now = new Date().toISOString();
     const normalizedPhone = from.trim();
+    const autoReplyEnabled = isWhatsAppAutoReplyEnabled();
     const nextActionAt = new Date(
       Date.now() + 24 * 60 * 60 * 1000,
     ).toISOString();
@@ -1708,8 +1710,8 @@ export async function persistWhatsAppMessagePostgres({
     );
 
     const shouldReply = existingConversation
-      ? existingConversation.isBotEnabled !== false
-      : true;
+      ? autoReplyEnabled && existingConversation.isBotEnabled !== false
+      : autoReplyEnabled;
 
     const transcriptSummary = existingConversation
       ? [
@@ -1745,7 +1747,7 @@ export async function persistWhatsAppMessagePostgres({
           detectedIntent: intent || "consulta_general",
           provider: "ycloud",
           contactPhone: normalizedPhone,
-          isBotEnabled: true,
+          isBotEnabled: autoReplyEnabled,
           unreadCount: 1,
           lastMessagePreview: message,
         };

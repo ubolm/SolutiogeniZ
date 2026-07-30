@@ -24,6 +24,7 @@ YCLOUD_WEBHOOK_SECRET=
 N8N_CRM_EVENTS_WEBHOOK_URL=
 N8N_CRM_EVENTS_WEBHOOK_SECRET=
 N8N_CRM_INBOUND_SECRET=
+WHATSAPP_BOT_AUTO_REPLY=false
 ```
 
 - `YCLOUD_API_KEY`: API key de YCloud.
@@ -32,6 +33,7 @@ N8N_CRM_INBOUND_SECRET=
 - `N8N_CRM_EVENTS_WEBHOOK_URL`: webhook privado de n8n que recibira eventos internos del CRM.
 - `N8N_CRM_EVENTS_WEBHOOK_SECRET`: secreto opcional enviado por el CRM en el header `x-sgz-crm-secret`.
 - `N8N_CRM_INBOUND_SECRET`: secreto que n8n debe enviar al CRM para ejecutar acciones internas de seguimiento.
+- `WHATSAPP_BOT_AUTO_REPLY`: si vale `false`, WhatsApp queda en modo humano y ya no responde automaticamente; solo registra, clasifica y dispara automatizaciones internas.
 
 ## Flujo recomendado
 

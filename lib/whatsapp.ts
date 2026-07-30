@@ -156,6 +156,10 @@ export function isWhatsAppConfigured() {
   return getWhatsAppProvider() !== "none";
 }
 
+export function isWhatsAppAutoReplyEnabled() {
+  return env("WHATSAPP_BOT_AUTO_REPLY").toLowerCase() === "true";
+}
+
 export function verifyWhatsAppWebhookToken(token: string | null) {
   if (getWhatsAppProvider() !== "meta") {
     return false;
