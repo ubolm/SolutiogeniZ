@@ -20,7 +20,7 @@ const navItems = [
     label: "Dashboard",
     description: "Resumen general",
     icon: ChartColumn,
-    roles: ["admin"] as CrmRole[],
+    roles: ["admin", "vendedor"] as CrmRole[],
   },
   {
     href: "/crm/leads",
@@ -41,7 +41,7 @@ const navItems = [
     label: "Mi trabajo",
     description: "Vista por responsable",
     icon: UserRoundCog,
-    roles: ["admin"] as CrmRole[],
+    roles: ["admin", "vendedor"] as CrmRole[],
   },
   {
     href: "/crm/conversaciones",

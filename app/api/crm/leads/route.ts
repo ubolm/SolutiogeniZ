@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import type { ChatbotLeadInterest } from "@/lib/chatbot";
 import {
-  getCrmSessionCookieName,
+  getCrmRoleCapabilities,
 } from "@/lib/crm-auth";
 import {
   getCrmTokenFromCookieHeader,
@@ -74,9 +74,11 @@ export async function POST(request: Request) {
     );
   }
 
-  if (session.role !== "admin") {
+  const capabilities = getCrmRoleCapabilities(session.role);
+
+  if (!capabilities.canCreateManualLeads) {
     return NextResponse.json(
-      { error: "Solo un admin puede crear leads manuales." },
+      { error: "No tienes permiso para crear leads manuales." },
       { status: 403 },
     );
   }

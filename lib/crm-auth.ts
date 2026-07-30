@@ -135,7 +135,7 @@ export function resolveCrmIdentityFromEnv(
 }
 
 export function getDefaultCrmPathForRole(role: CrmRole) {
-  return role === "admin" ? "/crm" : "/crm/leads";
+  return role === "admin" ? "/crm" : "/crm";
 }
 
 export function getCrmRoleCapabilities(
@@ -160,19 +160,19 @@ export function getCrmRoleCapabilities(
   }
 
   return {
-    canViewAdminDashboard: false,
-    canViewOwnerWorkspace: false,
+    canViewAdminDashboard: true,
+    canViewOwnerWorkspace: true,
     canViewUsers: false,
-    canCreateManualLeads: false,
+    canCreateManualLeads: true,
     canEditLeadStatus: true,
     canScheduleLeadNextAction: true,
     canCreateLeadActivity: true,
     canCreateLeadTasks: true,
     canUpdateLeadTasks: true,
-    canManageOwner: false,
-    canManageInternalNotes: false,
-    canViewAuditTrail: false,
-    canViewExecutiveSummary: false,
+    canManageOwner: true,
+    canManageInternalNotes: true,
+    canViewAuditTrail: true,
+    canViewExecutiveSummary: true,
   };
 }
 
@@ -182,16 +182,30 @@ export function getCrmAllowedPathPrefixes(role: CrmRole) {
   }
 
   return [
+    "/crm",
     "/crm/leads",
     "/crm/conversaciones",
     "/crm/tareas",
     "/crm/busqueda",
+    "/crm/mi-trabajo",
     "/api/crm/leads",
     "/api/crm/conversations",
   ];
 }
 
 export function canAccessCrmPath(role: CrmRole, pathname: string) {
+  if (role !== "admin") {
+    const blockedPrefixes = ["/crm/usuarios", "/api/crm/users", "/api/crm/reset"];
+
+    if (
+      blockedPrefixes.some(
+        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+      )
+    ) {
+      return false;
+    }
+  }
+
   const allowedPrefixes = getCrmAllowedPathPrefixes(role);
 
   return allowedPrefixes.some(

@@ -5,12 +5,15 @@ import {
   MessageSquareMore,
   Target,
 } from "lucide-react";
+import { cookies } from "next/headers";
 import Link from "next/link";
 
 import { AdminStatusTable } from "@/components/crm/AdminStatusTable";
 import { CrmPageIntro } from "@/components/crm/CrmPageIntro";
 import { CrmSurfaceCard } from "@/components/crm/CrmSurfaceCard";
-import { getCrmSnapshot } from "@/lib/crm-store";
+import { getCrmSessionCookieName } from "@/lib/crm-auth";
+import { verifyActiveCrmSessionToken } from "@/lib/crm-session";
+import { getCrmSnapshot, scopeCrmSnapshotToSession } from "@/lib/crm-store";
 import type { CrmLead } from "@/lib/crm-store";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +55,10 @@ function isLeadContextIncomplete(lead: CrmLead) {
 }
 
 export default async function CrmDashboardPage() {
-  const snapshot = await getCrmSnapshot();
+  const cookieStore = await cookies();
+  const token = cookieStore.get(getCrmSessionCookieName())?.value;
+  const session = await verifyActiveCrmSessionToken(token);
+  const snapshot = scopeCrmSnapshotToSession(await getCrmSnapshot(), session);
 
   const pendingTasks = snapshot.tasks.filter((task) => task.status === "pendiente");
   const overdueTasks = pendingTasks.filter(

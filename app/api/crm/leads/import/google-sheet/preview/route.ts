@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
-  getCrmSessionCookieName,
+  getCrmRoleCapabilities,
 } from "@/lib/crm-auth";
 import {
   getCrmTokenFromCookieHeader,
@@ -29,9 +29,11 @@ export async function POST(request: Request) {
     );
   }
 
-  if (session.role !== "admin") {
+  const capabilities = getCrmRoleCapabilities(session.role);
+
+  if (!capabilities.canCreateManualLeads) {
     return NextResponse.json(
-      { error: "Solo un admin puede previsualizar importaciones." },
+      { error: "No tienes permiso para previsualizar importaciones." },
       { status: 403 },
     );
   }

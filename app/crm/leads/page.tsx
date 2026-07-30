@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 
 import { CrmPageIntro } from "@/components/crm/CrmPageIntro";
+import { CrmResetDataCard } from "@/components/crm/CrmResetDataCard";
 import { CrmSurfaceCard } from "@/components/crm/CrmSurfaceCard";
 import { LeadCsvImportCard } from "@/components/crm/LeadCsvImportCard";
 import { LeadPipelineManager } from "@/components/crm/LeadPipelineManager";
@@ -79,6 +80,7 @@ export default async function CrmLeadsPage() {
             <>
               <ManualLeadForm ownerOptions={ownerUsers.map((user) => user.username)} />
               <LeadCsvImportCard />
+              {role === "admin" ? <CrmResetDataCard /> : null}
             </>
           ) : null}
 

@@ -1,11 +1,18 @@
+import { cookies } from "next/headers";
+
 import { CrmPageIntro } from "@/components/crm/CrmPageIntro";
+import { getCrmSessionCookieName } from "@/lib/crm-auth";
+import { verifyActiveCrmSessionToken } from "@/lib/crm-session";
 import { OwnerWorkspacePanel } from "@/components/crm/OwnerWorkspacePanel";
-import { getCrmSnapshot } from "@/lib/crm-store";
+import { getCrmSnapshot, scopeCrmSnapshotToSession } from "@/lib/crm-store";
 
 export const dynamic = "force-dynamic";
 
 export default async function CrmMyWorkPage() {
-  const snapshot = await getCrmSnapshot();
+  const cookieStore = await cookies();
+  const token = cookieStore.get(getCrmSessionCookieName())?.value;
+  const session = await verifyActiveCrmSessionToken(token);
+  const snapshot = scopeCrmSnapshotToSession(await getCrmSnapshot(), session);
   const assignedLeads = snapshot.leads.filter(
     (lead) => (lead.owner || "Sin asignar") !== "Sin asignar",
   );
